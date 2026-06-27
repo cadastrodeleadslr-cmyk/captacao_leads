@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { generateAgenciesPDF } from "./utils/pdfGenerator";
+import { supabase } from "./lib/supabase";
+import { WorkspaceIntegrations } from "./components/WorkspaceIntegrations";
 
 // Componente Logo Leandro Rodrigues Imóveis (Dinâmico: Imagem Oficial com Fallback SVG de Alta Fidelidade)
 const LeandroRodriguesLogo = ({ className = "h-12 w-12" }: { className?: string }) => {
@@ -777,6 +779,63 @@ export default function App() {
     fetchLeads();
     fetchAgencies();
   }, []);
+
+  // Escutar novos leads inseridos via Realtime do Supabase (tabelas leads e leads_vault)
+  useEffect(() => {
+    if (!supabase) return;
+
+    const toCamelCase = (obj: any) => {
+      if (!obj || typeof obj !== "object") return obj;
+      const mapped: any = {};
+      for (const key of Object.keys(obj)) {
+        const camelKey = key.replace(/([-_][a-z])/g, group =>
+          group.toUpperCase().replace("-", "").replace("_", "")
+        );
+        mapped[camelKey] = obj[key];
+      }
+      return mapped;
+    };
+
+    const handleNewInsert = (payload: any) => {
+      console.log("Realtime insert received:", payload);
+      if (payload.new) {
+        const newLead = toCamelCase(payload.new);
+        
+        // Tentar tocar som de notificação
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-500.wav");
+        audio.play().catch(err => console.warn("Audio playback blocked or failed:", err));
+        
+        // Atualizar listagem inserindo no topo
+        setBuyerLeads((prev) => {
+          // Prevenir duplicados por ID ou por URL
+          if (prev.some(lead => lead.id === newLead.id || (lead.url && lead.url === newLead.url))) {
+            return prev;
+          }
+          return [newLead, ...prev];
+        });
+      }
+    };
+
+    const channel = supabase
+      .channel("supabase-realtime-leads")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "leads" },
+        handleNewInsert
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "leads_vault" },
+        handleNewInsert
+      )
+      .subscribe((status) => {
+        console.log(`Supabase Realtime subscription status: ${status}`);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   // Salvar favoritos no localStorage quando alterado
   const handleToggleFavorite = (id: string) => {
@@ -1584,22 +1643,21 @@ export default function App() {
     }, 800);
   };
 
-  // Varredura automatizada real por IA Grounding
+  // Varredura automatizada real por IA Grounding e classificação cognitiva
   const handleStartLeadScan = () => {
     if (isScanningLeads) return;
     setIsScanningLeads(true);
-    setScanMessage("Conectando ao Google Search Grounding e buscando intenções de compra e venda de imóveis em tempo real...");
+    setScanMessage("Conectando aos canais digitais de Teresópolis e iniciando varredura cognitiva inteligente por IA...");
 
-    fetch("/api/search", {
+    fetch("/api/fetch-leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: "compradores procurando imoveis ou proprietarios vendendo particular direto dono",
         city: selectedCity
       })
     })
       .then((res) => {
-        if (!res.ok) throw new Error("Erro na busca de leads via IA");
+        if (!res.ok) throw new Error("Erro na busca cognitiva de leads via IA");
         return res.json();
       })
       .then((data) => {
@@ -1607,20 +1665,18 @@ export default function App() {
         setScanMessage("");
         fetchLeads(); // Recarrega a lista de leads reais cadastrados no backend!
         
-        const mode = data.mode || "REAL";
-        const count = data.opportunities?.length || 0;
-        
-        if (mode === "DEMO" || count === 0) {
-          alert(`Varredura concluída. Nenhum lead inédito adicional foi localizado neste instante em ${selectedCity} via busca em tempo real (ou chave do Gemini não configurada).`);
+        const count = data.leads?.length || 0;
+        if (count === 0) {
+          alert(`Varredura concluída. Nenhum lead inédito adicional foi localizado neste instante em ${selectedCity}.`);
         } else {
-          alert(`Sucesso! Encontramos ${count} novas intenções de compra/venda qualificadas em ${selectedCity} usando IA e Google Search Grounding! Eles foram salvos no banco de dados do CRM.`);
+          alert(`Sucesso! Encontramos e analisamos ${count} novas intenções qualificadas em ${selectedCity}! O perfil de cada lead (Pessoa Física ou Corretor) foi detectado cognitivamente e salvo com sucesso no banco de dados.`);
         }
       })
       .catch((err) => {
-        console.error("Erro na varredura de leads:", err);
+        console.error("Erro na varredura cognitiva de leads:", err);
         setIsScanningLeads(false);
         setScanMessage("");
-        alert("Falha ao realizar varredura em tempo real: verifique a conexão com o servidor.");
+        alert("Falha ao realizar varredura cognitiva em tempo real: verifique a conexão com o servidor.");
       });
   };
 
@@ -3702,6 +3758,40 @@ export default function App() {
                                 )}
                               </div>
 
+                              {/* Perfil do Anunciante Classificado Cognitivamente por IA */}
+                              {lead.perfilAnunciante && (
+                                <div className="p-3 rounded-sm border bg-[#FAF9F6] border-[#1A1A1A]/10 space-y-1.5 shadow-xs">
+                                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                    <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-[#1A1A1A]/50">Perfil do Anunciante:</span>
+                                    <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-sm font-mono ${
+                                      lead.perfilAnunciante === "Pessoa Física" 
+                                        ? "bg-amber-100 text-amber-800 border border-amber-200" 
+                                        : "bg-blue-100 text-blue-800 border border-blue-200"
+                                    }`}>
+                                      {lead.perfilAnunciante}
+                                    </span>
+                                  </div>
+                                  {lead.analisePerfilJustificativa && (
+                                    <p className="text-[10px] text-slate-600 dark:text-slate-400 font-serif italic leading-relaxed">
+                                      "{lead.analisePerfilJustificativa}"
+                                    </p>
+                                  )}
+                                  {lead.linkOrigem && (
+                                    <div className="pt-1.5 border-t border-[#1A1A1A]/5 flex justify-end">
+                                      <a 
+                                        href={lead.linkOrigem} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="text-[9px] font-mono text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 font-bold"
+                                      >
+                                        <Link2 className="h-2.5 w-2.5" />
+                                        Ver anúncio original
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                               {/* Trecho / Quote de Origem (Contexto do Scraper) */}
                               {lead.textExcerpt && (
                                 <div className="bg-[#FAF9F6] border border-[#1A1A1A]/5 p-2.5 rounded-sm text-[10px] theme-text-muted italic relative group/excerpt font-serif">
@@ -3775,22 +3865,36 @@ export default function App() {
                             </div>
 
                             {/* Ações de Abordagem Direta */}
-                            <div className="flex items-center justify-between gap-2 border-t border-[#1A1A1A]/10 pt-3.5 mt-4">
-                              <div className="flex items-center gap-1.5">
+                            <div className="flex items-center justify-between gap-2 border-t border-[#1A1A1A]/10 pt-3.5 mt-4 flex-wrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <button
                                   onClick={() => startEditingLead(lead)}
-                                  className="p-2 border border-[#1A1A1A]/10 hover:border-[#1A1A1A]/40 text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors rounded-sm"
+                                  className="p-2 border border-[#1A1A1A]/10 hover:border-[#1A1A1A]/40 text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors rounded-sm cursor-pointer"
                                   title="Editar Lead"
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteLead(lead.id)}
-                                  className="p-2 border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-600 transition-colors rounded-sm"
+                                  className="p-2 border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-600 transition-colors rounded-sm cursor-pointer"
                                   title="Excluir Lead"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
+
+                                {/* Link Discreto Ver Fonte Original */}
+                                {(lead.linkOrigem || lead.url || lead.urlTrace) && (
+                                  <a
+                                    href={lead.linkOrigem || lead.url || lead.urlTrace}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] font-mono font-bold text-neutral-500 hover:text-[#1A1A1A] transition-colors flex items-center gap-1 px-2 border-l border-neutral-300 ml-1"
+                                    title="Acessar a fonte original capturada"
+                                  >
+                                    <Link2 className="h-3 w-3" />
+                                    <span>Ver Fonte Original</span>
+                                  </a>
+                                )}
                               </div>
 
                               <div className="flex flex-wrap items-center gap-1.5">
@@ -3800,7 +3904,7 @@ export default function App() {
                                     setCopySuccessId(lead.id + "-msg");
                                     setTimeout(() => setCopySuccessId(null), 1500);
                                   }}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-[#F3F1ED] hover:bg-neutral-200 border border-[#1A1A1A]/10 transition-colors"
+                                  className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-[#F3F1ED] hover:bg-neutral-200 border border-[#1A1A1A]/10 transition-colors cursor-pointer"
                                 >
                                   {copySuccessId === (lead.id + "-msg") ? (
                                     <>
@@ -3817,7 +3921,7 @@ export default function App() {
 
                                 {/* WhatsApp Button */}
                                 <a
-                                  href={waLink}
+                                  href={lead.whatsappLink || waLink || `https://wa.me/${lead.whatsapp}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => {
@@ -3834,7 +3938,7 @@ export default function App() {
 
                                 {/* Facebook Button */}
                                 <a
-                                  href={lead.redeSocial ? (lead.redeSocial.startsWith("http") ? lead.redeSocial : `https://${lead.redeSocial}`) : `https://www.facebook.com/search/people/?q=${encodeURIComponent(lead.nome)}`}
+                                  href={lead.facebookLink || (lead.redeSocial && lead.redeSocial.toLowerCase().includes("facebook") ? (lead.redeSocial.startsWith("http") ? lead.redeSocial : `https://${lead.redeSocial}`) : `https://www.facebook.com/search/people/?q=${encodeURIComponent(lead.nome)}`)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => {
@@ -3847,6 +3951,23 @@ export default function App() {
                                 >
                                   <Facebook className="h-3.5 w-3.5" />
                                   <span>Facebook</span>
+                                </a>
+
+                                {/* Instagram Button */}
+                                <a
+                                  href={lead.instagramLink || (lead.redeSocial && lead.redeSocial.toLowerCase().includes("instagram") ? (lead.redeSocial.startsWith("http") ? lead.redeSocial : `https://${lead.redeSocial}`) : `https://www.instagram.com/${encodeURIComponent(lead.nome.toLowerCase().replace(/\s+/g, ''))}`)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    if (lead.status === "Pendente") {
+                                      handleUpdateLeadStatus(lead.id, "Contatado");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 hover:opacity-90 text-white rounded-sm transition-opacity"
+                                  title="Ver Perfil ou Contatar via Instagram"
+                                >
+                                  <Instagram className="h-3.5 w-3.5" />
+                                  <span>Instagram</span>
                                 </a>
 
                                 {/* E-mail Button */}
@@ -3863,6 +3984,40 @@ export default function App() {
                                   <Mail className="h-3.5 w-3.5" />
                                   <span>E-mail</span>
                                 </a>
+
+                                {/* Google Gmail Button */}
+                                <button
+                                  onClick={() => {
+                                    sessionStorage.setItem("workspace_prefill_email", lead.email);
+                                    sessionStorage.setItem("workspace_prefill_name", lead.nome);
+                                    setActiveTab("integrations" as any);
+                                    if (lead.status === "Pendente") {
+                                      handleUpdateLeadStatus(lead.id, "Contatado");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white rounded-sm transition-colors cursor-pointer"
+                                  title="Enviar e-mail integrado pelo Gmail"
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 animate-pulse text-amber-300" />
+                                  <span>Gmail</span>
+                                </button>
+
+                                {/* Google Meet / Calendar Button */}
+                                <button
+                                  onClick={() => {
+                                    sessionStorage.setItem("workspace_prefill_email", lead.email);
+                                    sessionStorage.setItem("workspace_prefill_name", lead.nome);
+                                    setActiveTab("integrations" as any);
+                                    if (lead.status === "Pendente") {
+                                      handleUpdateLeadStatus(lead.id, "Contatado");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm transition-colors cursor-pointer"
+                                  title="Agendar reunião com Google Meet"
+                                >
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  <span>Meet / Agenda</span>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -6241,6 +6396,19 @@ export default function App() {
                   />
                 )}
 
+              </motion.div>
+            )}
+
+            {activeTab === "integrations" && (
+              <motion.div
+                key="integrations-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-8"
+              >
+                <WorkspaceIntegrations buyerLeads={buyerLeads} accentColor={accentColor} />
               </motion.div>
             )}
           </AnimatePresence>

@@ -62,6 +62,12 @@ export interface BuyerLead {
   inconsistenciesDetected?: string[];
   userFeedback?: "contato_correto" | "telefone_errado" | "nome_incorreto" | "imovel_vendido" | "imovel_alugado" | "anuncio_invalido" | null;
   _originalLeads?: BuyerLead[];
+  perfilAnunciante?: string;
+  analisePerfilJustificativa?: string;
+  linkOrigem?: string;
+  whatsappLink?: string;
+  facebookLink?: string;
+  instagramLink?: string;
 }
 
 export interface IntegrationInfo {
