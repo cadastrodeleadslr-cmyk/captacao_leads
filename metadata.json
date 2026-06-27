@@ -1,0 +1,6 @@
+{
+  "name": "Leandro Rodrigues Imóveis",
+  "description": "Plataforma de inteligência e gestão imobiliária para Leandro Rodrigues Imóveis, projetada para identificar leads qualificados, gerenciar prospecção e analisar dados de mercado com design sofisticado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

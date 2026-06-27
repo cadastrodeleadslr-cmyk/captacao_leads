@@ -1,0 +1,12 @@
+Olá Leandro!
+
+Para usar a sua logomarca oficial exatamente como ela é (com todos os efeitos 3D, reflexos metálicos e brilho de vidro):
+
+1. Exporte a sua logomarca do seu computador como um arquivo de imagem PNG com fundo transparente.
+2. Nomeie o arquivo como "logo.png" (tudo em minúsculo).
+3. Arraste e solte o arquivo "logo.png" diretamente nesta pasta "public" usando o explorador de arquivos na lateral esquerda do editor do Google AI Studio.
+
+Assim que você fizer o upload, o sistema atualizará automaticamente para usar a sua imagem oficial e idêntica em vez da versão desenhada em vetor!
+
+Atenciosamente,
+Sua Inteligência de Desenvolvimento
