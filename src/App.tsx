@@ -23,7 +23,7 @@ import {
   SlidersHorizontal, Building, User, Copy, Facebook, Instagram, 
   Linkedin, Wifi, RefreshCw, Cpu, Database, Award, Shield, 
   Lock, ChevronDown, MessageCircle, AlertCircle, Calendar, Link2,
-  Mail, Upload, Eye, EyeOff, Users, Target, TrendingUp, Palette, ArrowRight, Table, Briefcase
+  Mail, Upload, Eye, EyeOff, Users, Target, TrendingUp, Palette, ArrowRight, Table, Briefcase, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { generateAgenciesPDF } from "./utils/pdfGenerator";
@@ -712,51 +712,70 @@ export default function App() {
     }
   };
 
-  // Carregar banco de dados de imobiliárias, favoritos e leads do localStorage
+  const fetchLeads = () => {
+    fetch("/api/leads")
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro de rede ao buscar leads");
+        return res.json();
+      })
+      .then((data) => {
+        setBuyerLeads(data);
+      })
+      .catch((err) => {
+        console.error("Erro ao atualizar leads do backend:", err);
+        // Fallback local caso caia
+        try {
+          const savedLeads = localStorage.getItem("teresopolis_imob_buyer_leads");
+          if (savedLeads) {
+            setBuyerLeads(JSON.parse(savedLeads));
+          } else {
+            setBuyerLeads(INITIAL_BUYER_LEADS);
+          }
+        } catch (e) {
+          setBuyerLeads(INITIAL_BUYER_LEADS);
+        }
+      });
+  };
+
+  const fetchAgencies = () => {
+    fetch("/api/agencies")
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro de rede ao buscar imobiliárias");
+        return res.json();
+      })
+      .then((data) => {
+        setAgencies(data);
+      })
+      .catch((err) => {
+        console.error("Erro ao atualizar imobiliárias do backend:", err);
+        // Fallback local caso caia
+        try {
+          const savedAgencies = localStorage.getItem("teresopolis_imob_database_v2");
+          if (savedAgencies) {
+            setAgencies(JSON.parse(savedAgencies));
+          } else {
+            setAgencies(IMOBILIARIAS_DATA);
+          }
+        } catch (e) {
+          setAgencies(IMOBILIARIAS_DATA);
+        }
+      });
+  };
+
+  // Carregar banco de dados de imobiliárias, favoritos e leads do localStorage/API
   useEffect(() => {
     try {
       const savedFavorites = localStorage.getItem("teresopolis_imob_favorites");
       if (savedFavorites) {
         setFavorites(JSON.parse(savedFavorites));
       }
-      
-      const savedAgencies = localStorage.getItem("teresopolis_imob_database_v2");
-      if (savedAgencies) {
-        const parsed = JSON.parse(savedAgencies);
-        // Garantir que as imobiliárias novas (ex: Leandro Rodrigues, My Broker, Santiago) sejam mescladas caso não existam
-        const merged = [...parsed];
-        IMOBILIARIAS_DATA.forEach((staticAgency) => {
-          if (!merged.some((item) => item.id === staticAgency.id)) {
-            merged.push(staticAgency);
-          }
-        });
-        setAgencies(merged);
-        localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(merged));
-      } else {
-        setAgencies(IMOBILIARIAS_DATA);
-        localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(IMOBILIARIAS_DATA));
-      }
-
-      const savedLeads = localStorage.getItem("teresopolis_imob_buyer_leads");
-      if (savedLeads) {
-        const parsedLeads = JSON.parse(savedLeads);
-        const mergedLeads = [...parsedLeads];
-        INITIAL_BUYER_LEADS.forEach((staticLead) => {
-          if (!mergedLeads.some((item) => item.id === staticLead.id)) {
-            mergedLeads.push(staticLead);
-          }
-        });
-        setBuyerLeads(mergedLeads);
-        localStorage.setItem("teresopolis_imob_buyer_leads", JSON.stringify(mergedLeads));
-      } else {
-        setBuyerLeads(INITIAL_BUYER_LEADS);
-        localStorage.setItem("teresopolis_imob_buyer_leads", JSON.stringify(INITIAL_BUYER_LEADS));
-      }
     } catch (e) {
-      console.warn("Erro ao ler do localStorage, usando backup em memória:", e);
-      setAgencies(IMOBILIARIAS_DATA);
-      setBuyerLeads(INITIAL_BUYER_LEADS);
+      console.warn("Erro ao ler favoritos do localStorage:", e);
     }
+    
+    // Buscar dados reais das APIs
+    fetchLeads();
+    fetchAgencies();
   }, []);
 
   // Salvar favoritos no localStorage quando alterado
@@ -783,26 +802,6 @@ export default function App() {
       cleanWA = "55" + cleanWA; // Garante o DDI do Brasil se não estiver presente
     }
 
-    const savedList = agencies.map((item) => {
-      if (editingAgency && item.id === editingAgency.id) {
-        return {
-          ...item,
-          nome: formName,
-          creci: formCreci || item.creci,
-          telefone: formPhone || item.telefone,
-          whatsapp: cleanWA || item.whatsapp,
-          endereco: formAddress || item.endereco,
-          bairro: formBairro || item.bairro,
-          site: formSite,
-          descricao: formDesc || item.descricao,
-          especialidades: formSpecs.length > 0 ? formSpecs : item.especialidades,
-          responsavel: formResponsavel || item.responsavel,
-          logoUrl: formLogoUrl || item.logoUrl
-        };
-      }
-      return item;
-    });
-
     if (isCreatingNew) {
       const newId = `custom-imob-${Date.now()}`;
       const newAgency: Imobiliaria = {
@@ -824,15 +823,48 @@ export default function App() {
         responsavel: formResponsavel || "Responsável não informado",
         logoUrl: formLogoUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=120&q=80"
       };
-      
-      savedList.unshift(newAgency);
-    }
 
-    setAgencies(savedList);
-    try {
-      localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(savedList));
-    } catch (err) {
-      console.warn("Erro ao salvar no localStorage:", err);
+      fetch("/api/agencies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAgency)
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Erro ao criar imobiliária");
+          fetchAgencies();
+        })
+        .catch(err => {
+          console.error("Erro ao criar imobiliária no backend:", err);
+          setAgencies(prev => [newAgency, ...prev]);
+        });
+    } else if (editingAgency) {
+      const updatedAgency = {
+        nome: formName,
+        creci: formCreci || editingAgency.creci,
+        telefone: formPhone || editingAgency.telefone,
+        whatsapp: cleanWA || editingAgency.whatsapp,
+        endereco: formAddress || editingAgency.endereco,
+        bairro: formBairro || editingAgency.bairro,
+        site: formSite,
+        descricao: formDesc || editingAgency.descricao,
+        especialidades: formSpecs.length > 0 ? formSpecs : editingAgency.especialidades,
+        responsavel: formResponsavel || editingAgency.responsavel,
+        logoUrl: formLogoUrl || editingAgency.logoUrl
+      };
+
+      fetch(`/api/agencies/${editingAgency.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedAgency)
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Erro ao atualizar imobiliária");
+          fetchAgencies();
+        })
+        .catch(err => {
+          console.error("Erro ao atualizar imobiliária no backend:", err);
+          setAgencies(prev => prev.map(item => item.id === editingAgency.id ? { ...item, ...updatedAgency } : item));
+        });
     }
 
     // Fechar e redefinir formulários
@@ -844,18 +876,25 @@ export default function App() {
   // Excluir imobiliária da listagem
   const handleDeleteAgency = (id: string) => {
     if (!window.confirm("Deseja realmente remover esta imobiliária permanentemente do seu catálogo de leads?")) return;
-    const updated = agencies.filter(item => item.id !== id);
-    setAgencies(updated);
-    try {
-      localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(updated));
-    } catch (err) {
-      console.warn("Erro ao remover do localStorage:", err);
-    }
+    
+    fetch(`/api/agencies/${id}`, {
+      method: "DELETE"
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("Erro ao deletar imobiliária");
+        fetchAgencies();
+      })
+      .catch(err => {
+        console.error("Erro ao deletar imobiliária:", err);
+        setAgencies(prev => prev.filter(item => item.id !== id));
+      });
   };
 
   // Redefinir toda a base para o padrão curado do sistema
   const handleResetDatabase = () => {
     if (!window.confirm("Atenção: Isso redefinirá todas as edições, correções e novos leads criados para as configurações originais de fábrica do sistema. Deseja prosseguir?")) return;
+    
+    // Redefine locally and try to post to API or just reset local memory
     setAgencies(IMOBILIARIAS_DATA);
     try {
       localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(IMOBILIARIAS_DATA));
@@ -866,18 +905,19 @@ export default function App() {
 
   // Atualizar status do lead de forma reativa e persistente
   const handleUpdateAgencyStatus = (id: string, status: Imobiliaria["status"]) => {
-    const updated = agencies.map((item) => {
-      if (item.id === id) {
-        return { ...item, status };
-      }
-      return item;
-    });
-    setAgencies(updated);
-    try {
-      localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(updated));
-    } catch (err) {
-      console.warn("Erro ao salvar status no localStorage:", err);
-    }
+    fetch(`/api/agencies/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("Erro ao atualizar status");
+        fetchAgencies();
+      })
+      .catch(err => {
+        console.error("Erro ao atualizar status da imobiliária:", err);
+        setAgencies(prev => prev.map((item) => item.id === id ? { ...item, status } : item));
+      });
   };
 
   // Atualizar telefone e link de whatsapp direto na lista inline
@@ -1007,34 +1047,41 @@ export default function App() {
       cleanWA = "55" + cleanWA;
     }
 
-    let savedList = [...buyerLeads];
-
     if (editingLead !== null) {
       // Atualizando lead existente
-      savedList = savedList.map((item) => {
-        if (item.id === editingLead.id) {
-          return {
-            ...item,
-            tipoLead: leadFormTipoLead,
-            nome: leadFormNome,
-            telefone: leadFormTelefone,
-            whatsapp: cleanWA,
-            email: leadFormEmail,
-            redeSocial: leadFormRedeSocial,
-            cidade: leadFormCidade,
-            bairroInteresse: leadFormBairro,
-            tipoImovel: leadFormTipoImovel,
-            valorMaximo: Number(leadFormValorMaximo),
-            quartos: Number(leadFormQuartos),
-            origem: leadFormOrigem,
-            detalhes: leadFormDetalhes,
-            status: leadFormStatus
-          };
-        }
-        return item;
-      });
+      const updatedFields = {
+        tipoLead: leadFormTipoLead,
+        nome: leadFormNome,
+        telefone: leadFormTelefone,
+        whatsapp: cleanWA,
+        email: leadFormEmail,
+        redeSocial: leadFormRedeSocial,
+        cidade: leadFormCidade,
+        bairroInteresse: leadFormBairro,
+        tipoImovel: leadFormTipoImovel,
+        valorMaximo: Number(leadFormValorMaximo),
+        quartos: Number(leadFormQuartos),
+        origem: leadFormOrigem,
+        detalhes: leadFormDetalhes,
+        status: leadFormStatus
+      };
+
+      fetch(`/api/leads/${editingLead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedFields)
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Erro ao atualizar lead");
+          fetchLeads();
+        })
+        .catch((err) => {
+          console.error("Erro ao atualizar lead no backend:", err);
+          // Fallback local
+          setBuyerLeads(prev => prev.map(item => item.id === editingLead.id ? { ...item, ...updatedFields } : item));
+        });
     } else {
-      // Criando novo lead
+      // Criando novo lead de forma real
       const newLead: BuyerLead = {
         id: "lead-" + Date.now(),
         tipoLead: leadFormTipoLead,
@@ -1053,14 +1100,21 @@ export default function App() {
         status: leadFormStatus,
         detalhes: leadFormDetalhes
       };
-      savedList.unshift(newLead);
-    }
 
-    setBuyerLeads(savedList);
-    try {
-      localStorage.setItem("teresopolis_imob_buyer_leads", JSON.stringify(savedList));
-    } catch (err) {
-      console.warn("Erro ao salvar leads no localStorage:", err);
+      fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newLead)
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Erro ao cadastrar lead");
+          fetchLeads();
+        })
+        .catch((err) => {
+          console.error("Erro ao cadastrar lead no backend:", err);
+          // Fallback local
+          setBuyerLeads(prev => [newLead, ...prev]);
+        });
     }
 
     // Fechar formulário
@@ -1071,44 +1125,36 @@ export default function App() {
 
   const handleDeleteLead = (id: string) => {
     if (!window.confirm("Deseja realmente excluir este lead de forma permanente?")) return;
-    const updated = buyerLeads.filter(item => item.id !== id);
-    setBuyerLeads(updated);
-    try {
-      localStorage.setItem("teresopolis_imob_buyer_leads", JSON.stringify(updated));
-    } catch (err) {
-      console.warn("Erro ao remover lead do localStorage:", err);
-    }
+    
+    fetch(`/api/leads/${id}`, {
+      method: "DELETE"
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao deletar lead");
+        fetchLeads();
+      })
+      .catch((err) => {
+        console.error("Erro ao deletar lead no backend:", err);
+        // Fallback local
+        setBuyerLeads(prev => prev.filter(item => item.id !== id));
+      });
   };
 
   const handleUpdateLeadStatus = (id: string, status: BuyerLead["status"]) => {
-    const targetLead = buyerLeads.find(l => l.id === id);
-    if (!targetLead) return;
-
-    const cleanPhone = (targetLead.whatsapp || targetLead.telefone || "").replace(/\D/g, "");
-    const cleanEmail = (targetLead.email || "").trim().toLowerCase();
-    const cleanName = (targetLead.nome || "").trim().toLowerCase();
-
-    const updated = buyerLeads.map((item) => {
-      const itemPhone = (item.whatsapp || item.telefone || "").replace(/\D/g, "");
-      const itemEmail = (item.email || "").trim().toLowerCase();
-      const itemName = (item.nome || "").trim().toLowerCase();
-
-      const isSameGroup = 
-        (cleanPhone && cleanPhone.length > 5 && itemPhone === cleanPhone) ||
-        (cleanEmail && itemEmail === cleanEmail) ||
-        (itemName === cleanName);
-
-      if (isSameGroup || item.id === id) {
-        return { ...item, status };
-      }
-      return item;
-    });
-    setBuyerLeads(updated);
-    try {
-      localStorage.setItem("teresopolis_imob_buyer_leads", JSON.stringify(updated));
-    } catch (err) {
-      console.warn("Erro ao salvar status do lead no localStorage:", err);
-    }
+    fetch(`/api/leads/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao atualizar status do lead");
+        fetchLeads();
+      })
+      .catch((err) => {
+        console.error("Erro ao atualizar status do lead no backend:", err);
+        // Fallback local
+        setBuyerLeads(prev => prev.map(item => item.id === id ? { ...item, status } : item));
+      });
   };
 
   const handleUpdateLeadFeedback = (leadId: string, feedback: BuyerLead["userFeedback"]) => {
@@ -1538,177 +1584,44 @@ export default function App() {
     }, 800);
   };
 
-  // Varredura automatizada simulada
+  // Varredura automatizada real por IA Grounding
   const handleStartLeadScan = () => {
     if (isScanningLeads) return;
     setIsScanningLeads(true);
-    
-    const steps = [
-      `Conectando aos indexadores locais de ${selectedCity}...`,
-      "Analisando classificados locais, OLX, Zap e portais imobiliários (Filtro: Direto com Proprietário)...",
-      "Varrendo grupos de venda e classificados locais no Facebook em busca de posts #Particular...",
-      "Processando buscas de intenção recentes no Google e hashtags relevantes de compradores...",
-      "Processando fotos de placas de 'Vende-se Proprietário' enviadas por agentes de campo...",
-      "Compilando e qualificando novos leads de Compradores e Proprietários Diretos...",
-    ];
-    
-    let currentStep = 0;
-    setScanMessage(steps[0]);
-    
-    const interval = setInterval(() => {
-      currentStep++;
-      if (currentStep < steps.length) {
-        setScanMessage(steps[currentStep]);
-      } else {
-        clearInterval(interval);
-        
-        const todayStr = new Date().toISOString().split("T")[0];
-        
-        // Helper para subtrair dias da data atual
-        const getPastDateStr = (days: number) => {
-          const d = new Date();
-          d.setDate(d.getDate() - days);
-          return d.toISOString().split("T")[0];
-        };
+    setScanMessage("Conectando ao Google Search Grounding e buscando intenções de compra e venda de imóveis em tempo real...");
 
-        // Lista de novos leads possíveis (Compradores e Proprietários) com bairros adaptados
-        const novosLeadsPossiveis: BuyerLead[] = [
-          {
-            id: "scanned-" + Date.now() + "-comprador-1",
-            tipoLead: "Comprador",
-            nome: "Guilherme Santos de Oliveira",
-            telefone: "(21) 97210-9080",
-            whatsapp: "5521972109080",
-            email: "gui.oliveira91@gmail.com",
-            redeSocial: "@gui_oliveira91",
-            cidade: selectedCity,
-            bairroInteresse: selectedCity === "Teresópolis" ? "Alto" : selectedCity === "Rio de Janeiro" ? "Copacabana" : "Centro",
-            tipoImovel: "Apartamento",
-            valorMaximo: 420000,
-            quartos: 2,
-            origem: "Busca Google (Intenção)",
-            dataCaptura: todayStr,
-            status: "Pendente",
-            detalhes: "Procura perto do comércio local. Pode ser antigo se for espaçoso. Quer agilidade."
-          },
-          {
-            id: "scanned-" + Date.now() + "-proprietario-1",
-            tipoLead: "Proprietário",
-            nome: "Marta Medeiros Sampaio (Particular)",
-            telefone: "(21) 98114-5566",
-            whatsapp: "5521981145566",
-            email: "marta.sampaio.particular@hotmail.com",
-            redeSocial: "facebook.com/marta.sampaio",
-            cidade: selectedCity,
-            bairroInteresse: selectedCity === "Teresópolis" ? "Agriões" : selectedCity === "Rio de Janeiro" ? "Botafogo" : "Centro",
-            tipoImovel: "Casa",
-            valorMaximo: 680000,
-            quartos: 3,
-            origem: "OLX (Anúncio Particular)",
-            dataCaptura: todayStr, // Hoje
-            status: "Pendente",
-            detalhes: "PROPRIETÁRIA DIRETA. Vende excelente casa linear sem corretores por motivo de mudança de cidade. Aceita propostas, mas não quer intermediários a princípio. Ótima oportunidade de captação."
-          },
-          {
-            id: "scanned-" + Date.now() + "-proprietario-2",
-            tipoLead: "Proprietário",
-            nome: "Dr. Roberto Albuquerque (Dono)",
-            telefone: "(21) 97112-8800",
-            whatsapp: "5521971128800",
-            email: "roberto.albuquerque.med@gmail.com",
-            cidade: selectedCity,
-            bairroInteresse: selectedCity === "Teresópolis" ? "Várzea" : selectedCity === "Rio de Janeiro" ? "Leblon" : "Centro",
-            tipoImovel: "Cobertura",
-            valorMaximo: 1150000,
-            quartos: 3,
-            origem: "Grupo Classificados Facebook",
-            dataCaptura: getPastDateStr(3), // Últimos 7 dias
-            status: "Pendente",
-            detalhes: "PROPRIETÁRIO DIRETO. Postou em grupo local: 'Vendo cobertura reformada direto comigo na área central. Dispenso corretores, mas aceito imobiliárias com clientes cadastrados prontos'."
-          },
-          {
-            id: "scanned-" + Date.now() + "-comprador-2",
-            tipoLead: "Comprador",
-            nome: "Beatriz Helena Vasconcellos",
-            telefone: "(21) 98322-1244",
-            whatsapp: "5521983221244",
-            email: "beatriz_vasconcellos@yahoo.com",
-            redeSocial: "facebook.com/beatriz.h.vasconcellos",
-            cidade: selectedCity,
-            bairroInteresse: selectedCity === "Teresópolis" ? "Albuquerque" : selectedCity === "Rio de Janeiro" ? "Ipanema" : "Centro",
-            tipoImovel: "Cobertura",
-            valorMaximo: 950000,
-            quartos: 3,
-            origem: "Hashtag Instagram",
-            dataCaptura: getPastDateStr(5), // Últimos 7 dias
-            status: "Pendente",
-            detalhes: "Procura cobertura com sol da manhã e vista livre de montanhas/verde."
-          },
-          {
-            id: "scanned-" + Date.now() + "-proprietario-3",
-            tipoLead: "Proprietário",
-            nome: "Carlos Eduardo Mendes",
-            telefone: "(21) 99182-4411",
-            whatsapp: "5521991824411",
-            email: "carlinhos.mendes.comercio@gmail.com",
-            cidade: selectedCity,
-            bairroInteresse: selectedCity === "Teresópolis" ? "Alto" : selectedCity === "Rio de Janeiro" ? "Laranjeiras" : "Centro",
-            tipoImovel: "Apartamento",
-            valorMaximo: 390000,
-            quartos: 2,
-            origem: "Faixa de Vende-se (Foto)",
-            dataCaptura: getPastDateStr(12), // Últimos 30 dias
-            status: "Pendente",
-            detalhes: "PROPRIETÁRIO DIRETO. Colocou placa de particular na janela do prédio. Excelente oportunidade de prospecção para nossa carteira."
-          },
-          {
-            id: "scanned-" + Date.now() + "-comprador-3",
-            tipoLead: "Comprador",
-            nome: "Marcelo Fonseca Cunha",
-            telefone: "(21) 99188-7711",
-            whatsapp: "5521991887711",
-            email: "marcelo.fcunha@globo.com",
-            redeSocial: "@marcelocunha_med",
-            cidade: selectedCity,
-            bairroInteresse: selectedCity === "Teresópolis" ? "Várzea" : selectedCity === "Rio de Janeiro" ? "Centro" : "Centro",
-            tipoImovel: "Casa em Condomínio",
-            valorMaximo: 2200000,
-            quartos: 4,
-            origem: "Portal OLX Lead",
-            dataCaptura: getPastDateStr(45), // Últimos 90 dias
-            status: "Pendente",
-            detalhes: "Médico cardiologista buscando morar com a família na serra. Exige 3 suítes, lareira e piscina aquecida."
-          }
-        ];
-        
-        // Selecionar de 1 a 3 leads aleatoriamente para adicionar
-        const quantidade = Math.floor(Math.random() * 3) + 1; // 1 a 3 novos leads
-        const shuffled = novosLeadsPossiveis.sort(() => 0.5 - Math.random());
-        const novosLeads = shuffled.slice(0, quantidade);
-        
-        setBuyerLeads(prev => {
-          const updated = [...novosLeads, ...prev];
-          try {
-            localStorage.setItem("teresopolis_imob_buyer_leads", JSON.stringify(updated));
-          } catch (err) {
-            console.warn("Erro ao salvar novos leads varridos no localStorage:", err);
-          }
-          return updated;
-        });
-        
+    fetch("/api/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "compradores procurando imoveis ou proprietarios vendendo particular direto dono",
+        city: selectedCity
+      })
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro na busca de leads via IA");
+        return res.json();
+      })
+      .then((data) => {
         setIsScanningLeads(false);
         setScanMessage("");
+        fetchLeads(); // Recarrega a lista de leads reais cadastrados no backend!
         
-        const totalCompradores = novosLeads.filter(l => l.tipoLead === "Comprador").length;
-        const totalProprietarios = novosLeads.filter(l => l.tipoLead === "Proprietário").length;
+        const mode = data.mode || "REAL";
+        const count = data.opportunities?.length || 0;
         
-        let message = `Sucesso! Varredura concluída em ${selectedCity}:\n`;
-        if (totalCompradores > 0) message += `• ${totalCompradores} novo(s) Comprador(es) interessado(s);\n`;
-        if (totalProprietarios > 0) message += `• ${totalProprietarios} novo(s) Proprietário(s) Direto(s) (FSBO) para captação!`;
-        
-        alert(message);
-      }
-    }, 1500);
+        if (mode === "DEMO" || count === 0) {
+          alert(`Varredura concluída. Nenhum lead inédito adicional foi localizado neste instante em ${selectedCity} via busca em tempo real (ou chave do Gemini não configurada).`);
+        } else {
+          alert(`Sucesso! Encontramos ${count} novas intenções de compra/venda qualificadas em ${selectedCity} usando IA e Google Search Grounding! Eles foram salvos no banco de dados do CRM.`);
+        }
+      })
+      .catch((err) => {
+        console.error("Erro na varredura de leads:", err);
+        setIsScanningLeads(false);
+        setScanMessage("");
+        alert("Falha ao realizar varredura em tempo real: verifique a conexão com o servidor.");
+      });
   };
 
   const addSpec = () => {
@@ -3094,9 +3007,10 @@ export default function App() {
                       <div className="h-1 bg-neutral-200 overflow-hidden relative">
                         <div className="absolute left-0 top-0 bottom-0 bg-[#5A5A40] w-2/3 animate-[shimmer_1.5s_infinite]" />
                       </div>
-                      <p className="text-[#1A1A1A]/70 text-[11px] italic">
-                        {scanMessage}
-                      </p>
+                      <div className="flex items-center gap-2.5 text-[#1A1A1A]/70 text-[11px] italic bg-[#1A1A1A]/5 p-2 rounded border border-[#1A1A1A]/5">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#5A5A40] shrink-0" />
+                        <span>{scanMessage}</span>
+                      </div>
                     </motion.div>
                   )}
                 </div>
