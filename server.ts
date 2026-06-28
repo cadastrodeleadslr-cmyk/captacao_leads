@@ -52,13 +52,19 @@ async function generateContentWithRetry(
     } catch (error: any) {
       attempt++;
       const errorMessage = error?.message || String(error);
+      const isQuotaExceeded = 
+        errorMessage.toLowerCase().includes("quota") || 
+        errorMessage.toLowerCase().includes("exceeded") ||
+        errorMessage.toLowerCase().includes("limit");
+
       const isTransient = 
-        errorMessage.includes("503") || 
-        errorMessage.includes("UNAVAILABLE") || 
-        errorMessage.includes("429") || 
-        errorMessage.includes("Resource Exhausted") ||
-        errorMessage.includes("high demand") ||
-        errorMessage.includes("overloaded");
+        (errorMessage.includes("503") || 
+         errorMessage.includes("UNAVAILABLE") || 
+         errorMessage.includes("429") || 
+         errorMessage.includes("Resource Exhausted") ||
+         errorMessage.includes("high demand") ||
+         errorMessage.includes("overloaded")) &&
+        !isQuotaExceeded;
 
       if (isTransient && attempt <= retries) {
         console.warn(`[Gemini Retry] Attempt ${attempt}/${retries} failed with transient error: ${errorMessage}. Retrying in ${delayMs}ms...`);
@@ -132,7 +138,6 @@ function toCamelCase(obj: any) {
 }
 
 // Configure agencies and leads persistence with static fallback
-import { IMOBILIARIAS_DATA, INITIAL_BUYER_LEADS } from "./src/data";
 
 const LEADS_FILE = path.join(process.cwd(), "leads-vault.json");
 let leadsVault: any[] = [];
@@ -154,11 +159,6 @@ function saveLeadsVault() {
   }
 }
 
-// Pre-populate with initial buyer leads if empty
-if (leadsVault.length === 0) {
-  leadsVault = [...INITIAL_BUYER_LEADS];
-}
-
 const AGENCIES_FILE = path.join(process.cwd(), "agencies-vault.json");
 let agenciesVault: any[] = [];
 
@@ -171,11 +171,6 @@ if (fs.existsSync(AGENCIES_FILE)) {
   }
 }
 
-// Pre-populate with initial agencies if empty
-if (agenciesVault.length === 0) {
-  agenciesVault = [...IMOBILIARIAS_DATA];
-}
-
 function saveAgenciesVault() {
   try {
     fs.writeFileSync(AGENCIES_FILE, JSON.stringify(agenciesVault, null, 2));
@@ -184,70 +179,6 @@ function saveAgenciesVault() {
   }
 }
 
-// Ensure at least some default authentic opportunities exist if database is empty
-if (leadsVault.length === 0) {
-  leadsVault = [
-    {
-      id: "vault-1",
-      category: "oportunidades_publicas",
-      title: "Procura de casa linear 3 quartos em Agriões",
-      summary: "Comentário em fórum imobiliário local de Teresópolis buscando indicação de casas lineares fora de condomínio.",
-      excerpt: "Estou procurando uma casa linear de 3 quartos no bairro Agriões em Teresópolis para morar com meus pais idosos. Preferência direto com o proprietário.",
-      url: "https://www.forumteresopolis.com.br/imoveis/topic/3492",
-      date: "2026-06-25",
-      time: "14:32",
-      sourceType: "Fórum Público",
-      confidence: 85,
-      confidenceReason: "Dados recentes e localização específica confirmada no fórum local",
-      status: "Aguardando nova confirmação",
-      region: "Teresópolis - Agriões",
-      propertyType: "Casa",
-      contactName: "Felipe Mendes",
-      contactPhone: "", // Left empty according to rules (cannot invent)
-      contactEmail: "",
-      urgency: "Média",
-      intentScore: 78,
-      intentDetails: "Busca ativa por acessibilidade devido a familiares idosos.",
-      history: [
-        {
-          timestamp: "2026-06-25 14:32",
-          action: "Capturado",
-          description: "Primeira descoberta no fórum público de Teresópolis."
-        }
-      ]
-    },
-    {
-      id: "vault-2",
-      category: "monitoramento_mercado",
-      title: "Venda de Apartamento Reformado no Alto",
-      summary: "Anúncio particular ativo no portal de classificados de Teresópolis.",
-      excerpt: "Apartamento aconchegante no Alto, reformado recentemente. 2 quartos, vaga de garagem, prédio com elevador. Sem intermediários, por favor.",
-      url: "https://rj.olx.com.br/regiao-serrana/imoveis/apartamento-alto-teresopolis-particular",
-      date: "2026-06-26",
-      time: "09:15",
-      sourceType: "Portal Imobiliário",
-      confidence: 90,
-      confidenceReason: "Anúncio original recente com URL rastreável e fotos verificadas",
-      status: "Novo",
-      region: "Teresópolis - Alto",
-      propertyType: "Apartamento",
-      contactName: "Ana Maria Castro",
-      contactPhone: "+5521998765432", // Verified phone pattern
-      contactEmail: "",
-      urgency: "Alta",
-      intentScore: 88,
-      intentDetails: "Anúncio particular direto indicando recusa a imobiliárias.",
-      history: [
-        {
-          timestamp: "2026-06-26 09:15",
-          action: "Capturado",
-          description: "Anúncio importado dos classificados públicos."
-        }
-      ]
-    }
-  ];
-  saveLeadsVault();
-}
 
 // API Routes
 app.get("/api/diagnostics", async (req, res) => {

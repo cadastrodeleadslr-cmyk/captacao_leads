@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { IMOBILIARIAS_DATA, INITIAL_BUYER_LEADS } from "./data";
 import { Imobiliaria, BuyerLead, MarketplaceOpportunity } from "./types";
 import { AgencyCard } from "./components/AgencyCard";
 import { InfoGuide } from "./components/InfoGuide";
@@ -731,10 +730,10 @@ export default function App() {
           if (savedLeads) {
             setBuyerLeads(JSON.parse(savedLeads));
           } else {
-            setBuyerLeads(INITIAL_BUYER_LEADS);
+            setBuyerLeads([]);
           }
         } catch (e) {
-          setBuyerLeads(INITIAL_BUYER_LEADS);
+          setBuyerLeads([]);
         }
       });
   };
@@ -756,10 +755,10 @@ export default function App() {
           if (savedAgencies) {
             setAgencies(JSON.parse(savedAgencies));
           } else {
-            setAgencies(IMOBILIARIAS_DATA);
+            setAgencies([]);
           }
         } catch (e) {
-          setAgencies(IMOBILIARIAS_DATA);
+          setAgencies([]);
         }
       });
   };
@@ -953,10 +952,10 @@ export default function App() {
   const handleResetDatabase = () => {
     if (!window.confirm("Atenção: Isso redefinirá todas as edições, correções e novos leads criados para as configurações originais de fábrica do sistema. Deseja prosseguir?")) return;
     
-    // Redefine locally and try to post to API or just reset local memory
-    setAgencies(IMOBILIARIAS_DATA);
+    // Redefine locally to empty
+    setAgencies([]);
     try {
-      localStorage.setItem("teresopolis_imob_database_v2", JSON.stringify(IMOBILIARIAS_DATA));
+      localStorage.removeItem("teresopolis_imob_database_v2");
     } catch (err) {
       console.warn("Erro ao redefinir localStorage:", err);
     }
@@ -3603,7 +3602,17 @@ export default function App() {
                     </span>
                   </div>
 
-                  {consolidatedBuyerLeads.length === 0 ? (
+                  {buyerLeads.length === 0 ? (
+                    <div className="bg-[#F3F1ED]/50 border border-dashed border-[#1A1A1A]/20 p-12 text-center space-y-3">
+                      <div className="h-10 w-10 rounded-full border border-neutral-500/10 flex items-center justify-center mx-auto text-neutral-500">
+                        <Search className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm uppercase text-[#1A1A1A]">Nenhum lead capturado ainda.</h4>
+                        <p className="text-xs text-[#1A1A1A]/70 mt-1 font-semibold">Clique em Buscar Novos Leads</p>
+                      </div>
+                    </div>
+                  ) : consolidatedBuyerLeads.length === 0 ? (
                     <div className="bg-[#F3F1ED]/50 border border-dashed border-[#1A1A1A]/20 p-12 text-center space-y-3">
                       <div className="h-10 w-10 rounded-full border border-neutral-500/10 flex items-center justify-center mx-auto text-neutral-500">
                         <Search className="h-5 w-5" />
