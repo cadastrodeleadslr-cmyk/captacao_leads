@@ -35,6 +35,43 @@ if (geminiApiKey) {
   console.log("No GEMINI_API_KEY env variable found. Running in demo mode.");
 }
 
+// Helper to pause execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Wrapper around generateContent to automatically handle transient rate limit (429) or high demand (503) errors with retries
+async function generateContentWithRetry(
+  client: GoogleGenAI,
+  params: { model: string; contents: string | any[]; config?: any },
+  retries = 3,
+  delayMs = 1500
+): Promise<any> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await client.models.generateContent(params);
+    } catch (error: any) {
+      attempt++;
+      const errorMessage = error?.message || String(error);
+      const isTransient = 
+        errorMessage.includes("503") || 
+        errorMessage.includes("UNAVAILABLE") || 
+        errorMessage.includes("429") || 
+        errorMessage.includes("Resource Exhausted") ||
+        errorMessage.includes("high demand") ||
+        errorMessage.includes("overloaded");
+
+      if (isTransient && attempt <= retries) {
+        console.warn(`[Gemini Retry] Attempt ${attempt}/${retries} failed with transient error: ${errorMessage}. Retrying in ${delayMs}ms...`);
+        await delay(delayMs);
+        // Exponential backoff
+        delayMs = delayMs * 2;
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 // Configure Supabase Client
 import { createClient } from "@supabase/supabase-js";
 
@@ -629,7 +666,7 @@ app.post("/api/search", async (req, res) => {
 
   try {
     const fullQuery = `${query} ${city || ""} Rio de Janeiro Brasil`;
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry(ai, {
       model: "gemini-3.5-flash",
       contents: `Pesquise na internet informações públicas reais, anúncios de imobiliárias ou anúncios de proprietários particulares (FSBO), posts públicos, ou comentários sobre transações de compra ou venda de imóveis para a consulta: "${fullQuery}". 
       
@@ -1009,6 +1046,64 @@ app.post("/api/fetch-leads", async (req, res) => {
       Você deve selecionar as origens de extração de leads ESTRITAMENTE a partir desta Matriz de Alvos Estruturada:
       ${matrixFormatted}
 
+      DICIONÁRIO DE PALAVRAS-CHAVE E INTENÇÕES DE TERESÓPOLIS:
+      Instrua-se a varrer e estruturar os leads simulados obrigatoriamente com base nos seguintes termos exatos de busca e padrões de texto:
+      - comprar casa em Teresópolis
+      - vender imóvel Teresópolis
+      - apartamento Alto Teresópolis
+      - casa em condomínio Teresópolis
+      - sítio em Teresópolis
+      - chácara em Teresópolis
+      - imóvel em Comary Teresópolis
+      - casa com lareira Teresópolis
+      - terreno em Teresópolis
+      - apartamento no centro Teresópolis
+      - casa em Várzea Teresópolis
+      - imóvel em Albuquerque
+      - Granja Comary imóveis
+      - casa em Agriões
+      - sítio em Teresópolis RJ
+      - chácara para alugar Teresópolis
+      - casa de campo Teresópolis
+      - imóvel na serra fluminense
+      - apartamento 2 quartos Teresópolis
+      - casa 3 quartos Teresópolis
+      - cobertura em Teresópolis
+      - imóvel barato Teresópolis
+      - casa de luxo Teresópolis
+      - terreno em condomínio Teresópolis
+      - sítio com nascente Teresópolis
+      - casa pronta para morar Teresópolis
+      - aluguel de temporada Teresópolis
+      - imóvel em Araras Teresópolis
+      - casa em Vale do Paraíso
+      - apartamento em Teresópolis
+      - casa em Teresópolis RJ
+      - vender casa Teresópolis
+      - corretor de imóveis Teresópolis
+      - imobiliária Teresópolis
+      - financiamento imobiliário Teresópolis
+      - casa até 500 mil Teresópolis
+      - sítio até 1 milhão Teresópolis
+      - apartamento até 300 mil Teresópolis
+      - imóvel com vista para serra
+      - casa aquecida Teresópolis
+      - chalé em Teresópolis
+      - imóvel rústico Teresópolis
+      - casa estilo colonial Teresópolis
+      - terreno plano Teresópolis
+      - sítio em Teresópolis barato
+      - chácara em Teresópolis centro
+      - casa em condomínio fechado Teresópolis
+      - apartamento novo Teresópolis
+      - imóvel para investir Teresópolis
+      - casa para fins de semana Teresópolis
+
+      Você DEVE obrigatoriamente usar esses termos do dicionário para definir de forma correspondente e realista:
+      1. O tipo do imóvel (ex: Casa, Apartamento, Sítio, Chácara, Cobertura, Terreno, Chalé, etc.)
+      2. O bairro exato de interesse (ex: Alto, Centro, Várzea, Comary, Albuquerque, Agriões, Araras, Vale do Paraíso, etc.)
+      3. A faixa de preço / valor máximo estimado baseado na intenção ou no orçamento do termo correspondente (ex: 'casa até 500 mil Teresópolis' deve definir o valor máximo de 500000; 'apartamento até 300 mil' deve definir 300000; 'sítio até 1 milhão' deve definir 1000000; etc.)
+
       Para cada lead gerado, você deve:
       1. Atribuir o nome exato da fonte escolhida (ex: "VivaReal Teresópolis", "CRECI RJ", "WhatsApp Business Teresópolis", etc.) ao campo 'origem'.
       2. Preencher o campo 'url' com um link/URL simulado e realista baseado na URL base correspondente ao portal de onde o lead simulado foi extraído (este campo será salvo na coluna 'link_origem' do banco).
@@ -1018,7 +1113,7 @@ app.post("/api/fetch-leads", async (req, res) => {
 
       Forneça as informações no formato JSON estruturado conforme o esquema abaixo.`;
 
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry(ai, {
         model: "gemini-3.5-flash",
         contents: prompt,
         config: {
