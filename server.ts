@@ -433,7 +433,7 @@ app.get("/api/agencies", async (req, res) => {
 
       if (error) {
         console.warn("Supabase agencies query error, falling back to local JSON:", error);
-      } else if (data && data.length > 0) {
+      } else if (data) {
         const camelCased = data.map((item: any) => toCamelCase(item));
         return res.json(camelCased);
       }

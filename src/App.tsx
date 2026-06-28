@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Imobiliaria, BuyerLead, MarketplaceOpportunity } from "./types";
 import { AgencyCard } from "./components/AgencyCard";
 import { InfoGuide } from "./components/InfoGuide";
@@ -21,7 +21,7 @@ import {
   Globe, ExternalLink, MessageSquare, Send, Check, Trash2, 
   SlidersHorizontal, Building, User, Copy, Facebook, Instagram, 
   Linkedin, Wifi, RefreshCw, Cpu, Database, Award, Shield, 
-  Lock, ChevronDown, MessageCircle, AlertCircle, Calendar, Link2,
+  Lock, ChevronDown, MessageCircle, AlertCircle, Calendar, Link2, Camera, Home,
   Mail, Upload, Eye, EyeOff, Users, Target, TrendingUp, Palette, ArrowRight, Table, Briefcase, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -352,6 +352,448 @@ function enrichLead(lead: BuyerLead): BuyerLead {
   };
 }
 
+const REAL_PEOPLE_FACES_FEMALE = [
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80",
+];
+
+const REAL_PEOPLE_FACES_MALE = [
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80",
+  "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80",
+];
+
+const APARTMENT_IMAGES = [
+  "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80",
+];
+
+const HOUSE_IMAGES = [
+  "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&q=80",
+];
+
+const LAND_IMAGES = [
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=80",
+];
+
+const FARM_IMAGES = [
+  "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=400&q=80",
+];
+
+const COB_IMAGES = [
+  "https://images.unsplash.com/photo-1512915922686-57c11dde9b6b?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?auto=format&fit=crop&w=400&q=80",
+];
+
+export function getRealProfilePic(name: string, customFoto?: string): string {
+  if (customFoto && customFoto.trim().startsWith("http")) {
+    return customFoto;
+  }
+
+  const clean = name.trim().toLowerCase();
+  
+  // Real Estate Agencies / Known Logos or Corporate profiles
+  if (
+    clean.includes("lopes") ||
+    clean.includes("remax") ||
+    clean.includes("re/max") ||
+    clean.includes("grupo leandro") ||
+    clean.includes("imobiliária") ||
+    clean.includes("imoveis") ||
+    clean.includes("imóveis") ||
+    clean.includes("creci") ||
+    clean.includes("consultor") ||
+    clean.includes("corretor") ||
+    clean.includes("serra azul")
+  ) {
+    // Return high-fidelity real estate corporate building representation or logo
+    return "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=150&q=80";
+  }
+
+  // Individual buyer/owner lead: DO NOT use fake stock photos of models.
+  // Instead, keep a drawing/cartoon avatar as explicitly requested by the user.
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+}
+
+export function getRealAdPic(tipoImovel: string, seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash += seed.charCodeAt(i);
+  }
+  const t = (tipoImovel || "").toLowerCase();
+  if (t.includes("apartamento")) {
+    return APARTMENT_IMAGES[hash % APARTMENT_IMAGES.length];
+  } else if (t.includes("terreno")) {
+    return LAND_IMAGES[hash % LAND_IMAGES.length];
+  } else if (
+    t.includes("sítio") || t.includes("sitio") ||
+    t.includes("chácara") || t.includes("chacara") ||
+    t.includes("fazenda")
+  ) {
+    return FARM_IMAGES[hash % FARM_IMAGES.length];
+  } else if (t.includes("cobertura")) {
+    return COB_IMAGES[hash % COB_IMAGES.length];
+  } else {
+    return HOUSE_IMAGES[hash % HOUSE_IMAGES.length];
+  }
+}
+
+export function InspectorBugiganga({ active }: { active: boolean }) {
+  return (
+    <div 
+      className="relative flex flex-col items-center justify-center h-[72px] w-[56px] shrink-0 select-none overflow-visible group"
+      title="Professor Bugiganga (Buscador Inteligente)"
+    >
+      {/* Background search pulse when active */}
+      {active && (
+        <div className="absolute inset-0 pointer-events-none -z-10 flex items-center justify-center">
+          <div className="absolute w-14 h-14 rounded-full border border-emerald-500/20 animate-ping" />
+          <div className="absolute w-10 h-10 rounded-full border border-emerald-500/35 animate-pulse" />
+        </div>
+      )}
+
+      {/* Character body */}
+      <div className="relative w-[50px] h-[64px] flex flex-col items-center">
+        {/* Grey Fedora Hat (Iconic Inspector Gadget hat) */}
+        <div className="relative z-30 flex flex-col items-center w-full">
+          {/* Hat Crown */}
+          <div className="w-[28px] h-[10px] bg-[#8E9297] border border-neutral-800/20 rounded-t-[3px] relative shadow-xs">
+            {/* Lighter grey band/ribbon */}
+            <div className="absolute bottom-0 w-full h-[2.5px] bg-[#D1D5DB]" />
+          </div>
+          {/* Hat Brim */}
+          <div className="w-[40px] h-[3px] bg-[#7B7F85] border border-neutral-800/20 rounded-full -mt-[1px] shadow-xs" />
+        </div>
+
+        {/* Black side hair wings (sticking out to left & right, exactly like Funko and cartoon) */}
+        <div className="absolute z-20 top-[6px] flex justify-between w-[38px]">
+          {/* Left hair spike */}
+          <div className="w-[10px] h-[10px] bg-[#111111] rounded-l-full rounded-b-full -rotate-15 border-l border-neutral-950 relative">
+            <div className="absolute top-[2px] -left-[3px] w-[7px] h-[5px] bg-[#111111] rounded-l-full rotate-45" />
+          </div>
+          {/* Right hair spike */}
+          <div className="w-[10px] h-[10px] bg-[#111111] rounded-r-full rounded-b-full rotate-15 border-r border-neutral-950 relative">
+            <div className="absolute top-[2px] -right-[3px] w-[7px] h-[5px] bg-[#111111] rounded-r-full -rotate-45" />
+          </div>
+        </div>
+
+        {/* Face (Pale Peach) */}
+        <div className="relative z-20 w-[24px] h-[20px] bg-[#FCE1CC] border-x border-b border-neutral-800/20 rounded-b-[4px] flex flex-col items-center justify-start -mt-[2px] shadow-xs">
+          {/* Ears */}
+          <div className="absolute -left-[3px] top-[3px] w-[4px] h-[7px] bg-[#FCE1CC] rounded-full border-l border-neutral-300" />
+          <div className="absolute -right-[3px] top-[3px] w-[4px] h-[7px] bg-[#FCE1CC] rounded-full border-r border-neutral-300" />
+
+          {/* Eyes (Funko round black eyes or cute cartoon pupils) */}
+          <div className="flex gap-[6px] mt-[4px] z-10">
+            {/* Left Eye */}
+            <div className="w-[6px] h-[6px] bg-white rounded-full flex items-center justify-center relative overflow-hidden border border-neutral-800/10">
+              <motion.div 
+                animate={active ? { x: [-0.5, 0.5, -0.5], y: [-0.3, 0.3, -0.3] } : { x: 0, y: 0 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="w-[3px] h-[3px] bg-neutral-900 rounded-full absolute"
+              />
+            </div>
+            {/* Right Eye */}
+            <div className="w-[6px] h-[6px] bg-white rounded-full flex items-center justify-center relative overflow-hidden border border-neutral-800/10">
+              <motion.div 
+                animate={active ? { x: [-0.5, 0.5, -0.5], y: [-0.3, 0.3, -0.3] } : { x: 0, y: 0 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="w-[3px] h-[3px] bg-neutral-900 rounded-full absolute"
+              />
+            </div>
+          </div>
+
+          {/* ICONIC BIG BULBOUS NOSE (Centered, prominent peach oval) */}
+          <div className="w-[9px] h-[12px] bg-[#FBCBB1] border border-neutral-800/20 rounded-full absolute top-[7px] left-1/2 -translate-x-1/2 z-35 shadow-xs" />
+        </div>
+
+        {/* Grey Trench Coat / Collar / Blue Tie */}
+        <div className="relative z-10 -mt-[1px] w-[26px] h-[22px] bg-[#8E9297] border border-neutral-800/20 rounded-t-[3px] flex flex-col items-center pt-[1px] shadow-xs">
+          {/* Shirt and blue tie in V neck */}
+          <div className="w-[10px] h-[5px] bg-white flex justify-center relative overflow-hidden" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)' }}>
+            <div className="w-[2.5px] h-[6px] bg-blue-600 rounded-b-[1px]" />
+          </div>
+          {/* Double Breasted Buttons */}
+          <div className="grid grid-cols-2 gap-[3px] mt-[3px]">
+            <div className="w-[2px] h-[2px] bg-neutral-900 rounded-full" />
+            <div className="w-[2px] h-[2px] bg-neutral-900 rounded-full" />
+          </div>
+        </div>
+
+        {/* Blue Pants & Grey Shoes */}
+        <div className="relative z-5 flex justify-between w-[16px] -mt-[1px]">
+          {/* Left leg */}
+          <div className="flex flex-col items-center">
+            <div className="w-[3.5px] h-[4px] bg-blue-600" />
+            <div className="w-[6px] h-[2px] bg-[#4B5563] rounded-t-[1px]" />
+          </div>
+          {/* Right leg */}
+          <div className="flex flex-col items-center">
+            <div className="w-[3.5px] h-[4px] bg-blue-600" />
+            <div className="w-[6px] h-[2px] bg-[#4B5563] rounded-t-[1px]" />
+          </div>
+        </div>
+
+        {/* Hand with gold/yellow Magnifying Glass */}
+        <motion.div
+          animate={active ? {
+            rotate: [0, -12, 18, -6, 0],
+            y: [0, -3, -2, -3, 0],
+            x: [0, 2, -1, 1, 0]
+          } : {
+            rotate: -15,
+            y: 1,
+            x: -1
+          }}
+          transition={{
+            duration: active ? 2.0 : 0.5,
+            repeat: active ? Infinity : 0,
+            ease: "easeInOut"
+          }}
+          style={{ originX: "0px", originY: "3px" }}
+          className="absolute z-25 left-[1px] top-[24px] flex items-center justify-start pointer-events-none"
+        >
+          {/* Coat Sleeve */}
+          <div className="w-[7px] h-[3.5px] bg-[#8E9297] border border-neutral-800/10 rounded-l-full shrink-0" />
+          {/* Brown Glove */}
+          <div className="w-[4.5px] h-[4.5px] bg-[#92400E] rounded-full shrink-0 -ml-[2px]" />
+          {/* Stick */}
+          <div className="w-[1px] h-[6px] bg-amber-800 -ml-[1px] origin-top rotate-12 shrink-0" />
+          {/* Lens Frame (Gold) */}
+          <div className="w-[11px] h-[11px] rounded-full border-1.5 border-amber-400 bg-emerald-400/20 -ml-[3px] -mt-[6px] relative flex items-center justify-center shrink-0 shadow-xs">
+            <div className="absolute top-[1px] left-[1px] w-[1.5px] h-[1.5px] bg-white/70 rounded-full" />
+            {active && (
+              <motion.div 
+                animate={{ opacity: [0.2, 0.5, 0.2] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+                className="absolute w-[22px] h-[22px] bg-gradient-to-r from-emerald-400/20 to-transparent rounded-full -right-[18px] pointer-events-none origin-left"
+                style={{ clipPath: 'polygon(0% 50%, 100% 0%, 100% 100%)' }}
+              />
+            )}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Tiny hover badge or indicator text */}
+      <span className="absolute -bottom-[6px] text-[7px] font-mono font-extrabold uppercase text-neutral-400 dark:text-neutral-500 scale-0 group-hover:scale-100 transition-all bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 px-1 py-0.2 rounded shadow-xs whitespace-nowrap z-50">
+        Bugiganga
+      </span>
+    </div>
+  );
+}
+
+interface GLRProperty {
+  id: string;
+  titulo: string;
+  tipoImovel: "Apartamento" | "Casa" | "Casa em Condomínio" | "Terreno" | "Sítio/Chácara" | "Cobertura";
+  cidade: "Teresópolis" | "Guapimirim" | "Rio de Janeiro" | "Nova Friburgo";
+  bairro: string;
+  valor: number;
+  quartos: number;
+  slug: string;
+  imagemUrl: string;
+  descricao: string;
+}
+
+const GRUPO_LEANDRO_RODRIGUES_PROPERTIES: GLRProperty[] = [
+  {
+    id: "glr-1",
+    titulo: "Apartamento de Alto Padrão em Agriões",
+    tipoImovel: "Apartamento",
+    cidade: "Teresópolis",
+    bairro: "Agriões",
+    valor: 750000,
+    quartos: 3,
+    slug: "apartamento-alto-padrao-agrioes-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80",
+    descricao: "Espetacular apartamento com varanda gourmet, suíte master, acabamento em porcelanato e 2 vagas de garagem demarcadas no coração de Agriões."
+  },
+  {
+    id: "glr-2",
+    titulo: "Casa em Condomínio de Luxo no Alto",
+    tipoImovel: "Casa em Condomínio",
+    cidade: "Teresópolis",
+    bairro: "Alto",
+    valor: 1800000,
+    quartos: 4,
+    slug: "casa-em-condominio-alto-luxo-4q",
+    imagemUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80",
+    descricao: "Mansão contemporânea com 4 suítes, piscina privativa, área gourmet integrada e segurança 24h nos arredores do Lago Comary."
+  },
+  {
+    id: "glr-3",
+    titulo: "Apartamento Aconchegante na Várzea Centro",
+    tipoImovel: "Apartamento",
+    cidade: "Teresópolis",
+    bairro: "Várzea",
+    valor: 380000,
+    quartos: 2,
+    slug: "apartamento-aconchegante-varzea-2q",
+    imagemUrl: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80",
+    descricao: "Lindo apartamento reformado, sol da manhã, composto por sala em dois ambientes, 2 quartos, cozinha planejada e condomínio com lazer completo."
+  },
+  {
+    id: "glr-4",
+    titulo: "Sítio Espetacular com Piscina em Albuquerque",
+    tipoImovel: "Sítio/Chácara",
+    cidade: "Teresópolis",
+    bairro: "Albuquerque",
+    valor: 1200000,
+    quartos: 5,
+    slug: "sitio-espetacular-albuquerque-5q",
+    imagemUrl: "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=600&q=80",
+    descricao: "Área de 5.000m² totalmente plana, casa sede com lareira, 5 quartos, casa de caseiro, piscina, churrasqueira, pomar formado e riacho cristalino."
+  },
+  {
+    id: "glr-5",
+    titulo: "Casa Linear Charmosa no Centro de Guapimirim",
+    tipoImovel: "Casa",
+    cidade: "Guapimirim",
+    bairro: "Centro",
+    valor: 450000,
+    quartos: 3,
+    slug: "casa-linear-charmosa-centro-guapi-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=600&q=80",
+    descricao: "Casa linear com amplo quintal gramado, varandão, 3 quartos (1 suíte), área de serviço, garagem coberta para 3 carros, água própria da serra."
+  },
+  {
+    id: "glr-6",
+    titulo: "Sítio com Piscina Natural no Soberbo",
+    tipoImovel: "Sítio/Chácara",
+    cidade: "Guapimirim",
+    bairro: "Soberbo",
+    valor: 850000,
+    quartos: 4,
+    slug: "sitio-piscina-natural-soberbo-4q",
+    imagemUrl: "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=600&q=80",
+    descricao: "Espetacular sítio imerso no verde com cachoeira particular, piscina natural, casa sede rústica, churrasqueira e fogão a lenha."
+  },
+  {
+    id: "glr-7",
+    titulo: "Terreno Plano Pronto para Construir em Parada Modelo",
+    tipoImovel: "Terreno",
+    cidade: "Guapimirim",
+    bairro: "Parada Modelo",
+    valor: 120000,
+    quartos: 0,
+    slug: "terreno-plano-parada-modelo",
+    imagemUrl: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=80",
+    descricao: "Lote totalmente plano de 360m² em condomínio fechado de baixo custo, rua calçada, água de nascente, luz e internet de fibra na porta."
+  },
+  {
+    id: "glr-8",
+    titulo: "Cobertura Duplex com Vista Mar em Ipanema",
+    tipoImovel: "Cobertura",
+    cidade: "Rio de Janeiro",
+    bairro: "Ipanema",
+    valor: 4500000,
+    quartos: 3,
+    slug: "cobertura-duplex-vista-mar-ipanema-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1512915922686-57c11dde9b6b?auto=format&fit=crop&w=600&q=80",
+    descricao: "Magnífica cobertura duplex com terraço, piscina privativa, churrasqueira e vista panorâmica para a Praia de Ipanema e o Morro Dois Irmãos."
+  },
+  {
+    id: "glr-9",
+    titulo: "Apartamento Totalmente Reformado no Leblon",
+    tipoImovel: "Apartamento",
+    cidade: "Rio de Janeiro",
+    bairro: "Leblon",
+    valor: 2200000,
+    quartos: 2,
+    slug: "apartamento-reformado-leblon-2q",
+    imagemUrl: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
+    descricao: "Apartamento de fundos silencioso, planta circular de 90m², reformado por arquiteto, 2 suítes, cozinha americana integrada e dependência de serviço completa."
+  },
+  {
+    id: "glr-10",
+    titulo: "Apartamento Quadra da Praia em Copacabana",
+    tipoImovel: "Apartamento",
+    cidade: "Rio de Janeiro",
+    bairro: "Copacabana",
+    valor: 1100000,
+    quartos: 3,
+    slug: "apartamento-quadra-praia-copacabana-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80",
+    descricao: "Excelente localização na quadra da praia, Posto 4. Sala de estar ampla, 3 quartos grandes, banheiro reformado, portaria 24h e vaga de garagem."
+  },
+  {
+    id: "glr-11",
+    titulo: "Casa Rústica com Lareira no Cônego",
+    tipoImovel: "Casa",
+    cidade: "Nova Friburgo",
+    bairro: "Cônego",
+    valor: 680000,
+    quartos: 3,
+    slug: "casa-rustica-lareira-conego-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=600&q=80",
+    descricao: "Charmosa casa na montanha com lareira central, varanda de inverno, adega, 3 quartos sendo 1 suíte de casal com banheira de hidromassagem e bosque nos fundos."
+  },
+  {
+    id: "glr-12",
+    titulo: "Sítio Charmoso na Montanha em Mury",
+    tipoImovel: "Sítio/Chácara",
+    cidade: "Nova Friburgo",
+    bairro: "Mury",
+    valor: 950000,
+    quartos: 4,
+    slug: "sitio-charmoso-montanha-mury-4q",
+    imagemUrl: "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=600&q=80",
+    descricao: "Localizado no polo gastronômico de Mury, sítio com 2.500m² arborizados, casa em estilo suíço, sauna, piscina aquecida de água mineral e churrasqueira."
+  },
+  {
+    id: "glr-13",
+    titulo: "Apartamento de Alto Padrão no Leblon Novo",
+    tipoImovel: "Apartamento",
+    cidade: "Rio de Janeiro",
+    bairro: "Leblon",
+    valor: 3500000,
+    quartos: 3,
+    slug: "apartamento-alto-padrao-leblon-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=600&q=80",
+    descricao: "Apartamento de alto padrão, recém-construído no Leblon. Acabamento primoroso com mármore Carrara, automação residencial e 3 suítes completas."
+  },
+  {
+    id: "glr-14",
+    titulo: "Casa em Condomínio Fechado em Albuquerque",
+    tipoImovel: "Casa em Condomínio",
+    cidade: "Teresópolis",
+    bairro: "Albuquerque",
+    valor: 850000,
+    quartos: 3,
+    slug: "casa-em-condominio-albuquerque-3q",
+    imagemUrl: "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?auto=format&fit=crop&w=600&q=80",
+    descricao: "Bela residência linear em condomínio tradicional de Albuquerque, com quadra de tênis, horta comunitária e portaria blindada com vigilância armada."
+  },
+  {
+    id: "glr-15",
+    titulo: "Casa Cinematográfica no Lago Comary",
+    tipoImovel: "Casa em Condomínio",
+    cidade: "Teresópolis",
+    bairro: "Alto",
+    valor: 3200000,
+    quartos: 5,
+    slug: "casa-cinematografica-lago-comary-5q",
+    imagemUrl: "https://images.unsplash.com/photo-1512915922686-57c11dde9b6b?auto=format&fit=crop&w=600&q=80",
+    descricao: "Mansão espetacular com vista de tirar o fôlego para a CBF e o Dedo de Deus, elevador panorâmico, heliponto homologado, spa com saunas e piscina aquecida."
+  }
+];
+
 export default function App() {
   // Estados de Tema e Paleta de Cores
   const [themeMode, setThemeMode] = useState<"light" | "dark" | "night">(() => {
@@ -448,8 +890,10 @@ export default function App() {
   const [trendReportCity, setTrendReportCity] = useState<string | null>(null);
   const [expandedLeadTraceId, setExpandedLeadTraceId] = useState<string | null>(null);
   const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
+  const [publishedLeadIds, setPublishedLeadIds] = useState<string[]>([]);
   const [buyerLeads, setBuyerLeads] = useState<BuyerLead[]>([]);
   const [isScanningLeads, setIsScanningLeads] = useState(false);
+  const [scanIntervalMinutes, setScanIntervalMinutes] = useState<number>(2); // default 2 minutos
   const [scanMessage, setScanMessage] = useState("");
   const [leadSearchQuery, setLeadSearchQuery] = useState("");
   const [selectedLeadCategory, setSelectedLeadCategory] = useState<"Todos" | "Comprador" | "Proprietário">("Todos");
@@ -700,6 +1144,8 @@ export default function App() {
   const [leadFormOrigem, setLeadFormOrigem] = useState<string>("Busca Google (Intenção)");
   const [leadFormDetalhes, setLeadFormDetalhes] = useState("");
   const [leadFormStatus, setLeadFormStatus] = useState<BuyerLead["status"]>("Pendente");
+  const [leadFormFotoPerfil, setLeadFormFotoPerfil] = useState("");
+  const [leadFormFotoAnuncio, setLeadFormFotoAnuncio] = useState("");
 
   // Exportar relatório PDF curado de imobiliárias
   const handleExportPDF = () => {
@@ -713,6 +1159,51 @@ export default function App() {
     }
   };
 
+  const existingLeadIdsRef = useRef<Set<string>>(new Set());
+  const isInitialLeadsLoad = useRef(true);
+
+  // Play a powerful synthesized notification sound resembling a police siren (using Web Audio API)
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const now = ctx.currentTime;
+      const duration = 2.2; // Som mais longo (2.2 segundos)
+      
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      // Onda triangular para simular a textura de uma sirene eletrônica real
+      osc.type = "triangle";
+      
+      // Modulação de frequência da sirene (efeito wail / sobe e desce)
+      osc.frequency.setValueAtTime(600, now);
+      
+      // Ciclo 1
+      osc.frequency.linearRampToValueAtTime(1100, now + 0.55);
+      osc.frequency.linearRampToValueAtTime(600, now + 1.10);
+      
+      // Ciclo 2
+      osc.frequency.linearRampToValueAtTime(1100, now + 1.65);
+      osc.frequency.linearRampToValueAtTime(600, now + 2.20);
+      
+      // Ganho 50% mais alto e potente (0.45) para excelente audibilidade
+      gainNode.gain.setValueAtTime(0.45, now);
+      gainNode.gain.setValueAtTime(0.45, now + 1.80);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch (err) {
+      console.error("Erro ao reproduzir sinal sonoro:", err);
+    }
+  };
+
   const fetchLeads = () => {
     fetch("/api/leads")
       .then((res) => {
@@ -720,21 +1211,22 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
+        if (Array.isArray(data)) {
+          const incomingIds = data.map(l => l.id);
+          const hasNew = incomingIds.some(id => !existingLeadIdsRef.current.has(id));
+          
+          if (hasNew && !isInitialLeadsLoad.current && existingLeadIdsRef.current.size > 0) {
+            playNotificationSound();
+          }
+          
+          existingLeadIdsRef.current = new Set(incomingIds);
+          isInitialLeadsLoad.current = false;
+        }
         setBuyerLeads(data);
       })
       .catch((err) => {
         console.error("Erro ao atualizar leads do backend:", err);
-        // Fallback local caso caia
-        try {
-          const savedLeads = localStorage.getItem("teresopolis_imob_buyer_leads");
-          if (savedLeads) {
-            setBuyerLeads(JSON.parse(savedLeads));
-          } else {
-            setBuyerLeads([]);
-          }
-        } catch (e) {
-          setBuyerLeads([]);
-        }
+        setBuyerLeads([]);
       });
   };
 
@@ -749,17 +1241,7 @@ export default function App() {
       })
       .catch((err) => {
         console.error("Erro ao atualizar imobiliárias do backend:", err);
-        // Fallback local caso caia
-        try {
-          const savedAgencies = localStorage.getItem("teresopolis_imob_database_v2");
-          if (savedAgencies) {
-            setAgencies(JSON.parse(savedAgencies));
-          } else {
-            setAgencies([]);
-          }
-        } catch (e) {
-          setAgencies([]);
-        }
+        setAgencies([]);
       });
   };
 
@@ -801,6 +1283,7 @@ export default function App() {
         const newLead = toCamelCase(payload.new);
         
         // Tentar tocar som de notificação
+        playNotificationSound();
         const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-500.wav");
         audio.play().catch(err => console.warn("Audio playback blocked or failed:", err));
         
@@ -835,6 +1318,25 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, [supabase]);
+
+  // Ref para manter a função de varredura sempre atualizada sem recriar o temporizador
+  const handleStartLeadScanRef = useRef<any>(null);
+  useEffect(() => {
+    handleStartLeadScanRef.current = handleStartLeadScan;
+  });
+
+  // Temporizador para varredura automática baseado no intervalo configurado
+  useEffect(() => {
+    console.log(`Temporizador: Agendando varredura automatizada periódica a cada ${scanIntervalMinutes} minuto(s)...`);
+    const interval = setInterval(() => {
+      console.log(`Temporizador: Iniciando varredura automatizada periódica a cada ${scanIntervalMinutes} min...`);
+      if (handleStartLeadScanRef.current) {
+        handleStartLeadScanRef.current(true); // true para varredura automática silenciosa
+      }
+    }, scanIntervalMinutes * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [scanIntervalMinutes]);
 
   // Salvar favoritos no localStorage quando alterado
   const handleToggleFavorite = (id: string) => {
@@ -1058,6 +1560,8 @@ export default function App() {
     setLeadFormOrigem("Busca Google (Intenção)");
     setLeadFormDetalhes("");
     setLeadFormStatus("Pendente");
+    setLeadFormFotoPerfil("");
+    setLeadFormFotoAnuncio("");
   };
 
   const startEditingLead = (lead: BuyerLead) => {
@@ -1077,6 +1581,8 @@ export default function App() {
     setLeadFormOrigem(lead.origem);
     setLeadFormDetalhes(lead.detalhes || "");
     setLeadFormStatus(lead.status);
+    setLeadFormFotoPerfil(lead.fotoPerfil || "");
+    setLeadFormFotoAnuncio(lead.fotoAnuncio || "");
   };
 
   const startCreatingLead = () => {
@@ -1121,7 +1627,9 @@ export default function App() {
         quartos: Number(leadFormQuartos),
         origem: leadFormOrigem,
         detalhes: leadFormDetalhes,
-        status: leadFormStatus
+        status: leadFormStatus,
+        fotoPerfil: leadFormFotoPerfil,
+        fotoAnuncio: leadFormFotoAnuncio
       };
 
       fetch(`/api/leads/${editingLead.id}`, {
@@ -1156,7 +1664,9 @@ export default function App() {
         origem: leadFormOrigem,
         dataCaptura: new Date().toISOString().split("T")[0],
         status: leadFormStatus,
-        detalhes: leadFormDetalhes
+        detalhes: leadFormDetalhes,
+        fotoPerfil: leadFormFotoPerfil,
+        fotoAnuncio: leadFormFotoAnuncio
       };
 
       fetch("/api/leads", {
@@ -1643,7 +2153,7 @@ export default function App() {
   };
 
   // Varredura automatizada real por IA Grounding e classificação cognitiva
-  const handleStartLeadScan = () => {
+  const handleStartLeadScan = (isAutoScan: boolean = false) => {
     if (isScanningLeads) return;
     setIsScanningLeads(true);
     setScanMessage("Conectando aos canais digitais de Teresópolis e iniciando varredura cognitiva inteligente por IA...");
@@ -1665,17 +2175,21 @@ export default function App() {
         fetchLeads(); // Recarrega a lista de leads reais cadastrados no backend!
         
         const count = data.leads?.length || 0;
-        if (count === 0) {
-          alert(`Varredura concluída. Nenhum lead inédito adicional foi localizado neste instante em ${selectedCity}.`);
-        } else {
-          alert(`Sucesso! Encontramos e analisamos ${count} novas intenções qualificadas em ${selectedCity}! O perfil de cada lead (Pessoa Física ou Corretor) foi detectado cognitivamente e salvo com sucesso no banco de dados.`);
+        if (!isAutoScan) {
+          if (count === 0) {
+            alert(`Varredura concluída. Nenhum lead inédito adicional foi localizado neste instante em ${selectedCity}.`);
+          } else {
+            alert(`Sucesso! Encontramos e analisamos ${count} novas intenções qualificadas em ${selectedCity}! O perfil de cada lead (Pessoa Física ou Corretor) foi detectado cognitivamente e salvo com sucesso no banco de dados.`);
+          }
         }
       })
       .catch((err) => {
         console.error("Erro na varredura cognitiva de leads:", err);
         setIsScanningLeads(false);
         setScanMessage("");
-        alert("Falha ao realizar varredura cognitiva em tempo real: verifique a conexão com o servidor.");
+        if (!isAutoScan) {
+          alert("Falha ao realizar varredura cognitiva em tempo real: verifique a conexão com o servidor.");
+        }
       });
   };
 
@@ -3005,8 +3519,8 @@ export default function App() {
                 className="space-y-8"
               >
                 {/* Header do Radar & CRM Integrado */}
-                <div className="bg-[#F3F1ED] border border-[#1A1A1A]/10 p-6 md:p-8 space-y-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="bg-[#F3F1ED] border border-[#1A1A1A]/10 p-6 md:p-8 space-y-5">
+                  <div className="space-y-5">
                     <div>
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -3022,21 +3536,75 @@ export default function App() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-3.5 flex-wrap">
+                      {/* Inspetor Bugiganga Animado ao lado do botão de busca de leads */}
+                      <InspectorBugiganga active={isScanningLeads} />
+
                       <button
                         onClick={handleStartLeadScan}
                         disabled={isScanningLeads}
-                        className={`flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-widest bg-[#1A1A1A] text-[#FAF9F6] border border-transparent hover:bg-neutral-800 transition-all ${
+                        className={`flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-widest bg-[#1A1A1A] text-[#FAF9F6] border border-transparent hover:bg-neutral-800 transition-all cursor-pointer ${
                           isScanningLeads ? "opacity-75 cursor-not-allowed" : ""
                         }`}
+                        title="Buscar novos leads agora nos canais digitais"
                       >
-                        <Sparkles className={`h-4 w-4 ${isScanningLeads ? "animate-spin text-amber-300" : ""}`} />
-                        <span>{isScanningLeads ? "Varrendo Canais..." : "Buscar Novos Leads"}</span>
+                        {/* Boneco de terno com uma lupa em movimento */}
+                        <div className="relative flex items-center justify-center w-5 h-5 shrink-0 overflow-visible mr-0.5">
+                          {/* Boneco de terno (User icon com gravata vermelha) */}
+                          <div className="relative">
+                            <User className="h-4 w-4 text-slate-200" />
+                            {/* Gravata vermelha oficial */}
+                            <div 
+                              className="absolute top-[8px] left-[6.5px] w-[3px] h-1.5 bg-rose-500 rounded-b-xs" 
+                              style={{ clipPath: 'polygon(50% 0%, 100% 30%, 50% 100%, 0% 30%)' }} 
+                            />
+                          </div>
+                          {/* Lupa em movimento de varredura inteligente */}
+                          <motion.div
+                            animate={{
+                              x: isScanningLeads ? [0, 5, -5, 0] : [0, 3, -3, 0],
+                              y: isScanningLeads ? [-1, 2, -1, -1] : [0, -1, 1, 0],
+                              rotate: isScanningLeads ? [0, 35, -35, 0] : [0, 12, -12, 0],
+                              scale: isScanningLeads ? [1, 1.25, 0.9, 1] : 1
+                            }}
+                            transition={{
+                              duration: isScanningLeads ? 1.0 : 2.2,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                            className="absolute -top-1 -right-1 text-amber-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+                          >
+                            <Search className="h-2.5 w-2.5 stroke-[3px]" />
+                          </motion.div>
+                        </div>
+                        <span>{isScanningLeads ? "Buscando..." : "Buscar Novos Leads"}</span>
                       </button>
+
+                      {/* Botão/Seletor de Intervalo de Busca Automática */}
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-neutral-900 text-[#1A1A1A] dark:text-white border border-[#1A1A1A]/20 px-3 py-2.5 hover:border-[#1A1A1A] transition-all shrink-0">
+                        <RefreshCw className={`h-3.5 w-3.5 text-neutral-500 shrink-0 ${isScanningLeads ? "animate-spin" : ""}`} />
+                        <div className="flex flex-col text-left">
+                          <span className="text-[7px] font-mono font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest leading-none">Auto-Busca</span>
+                          <select
+                            value={scanIntervalMinutes}
+                            onChange={(e) => setScanIntervalMinutes(Number(e.target.value))}
+                            className="bg-transparent border-none text-[10px] font-mono font-extrabold text-[#1A1A1A] dark:text-white py-0 px-0 pr-4 focus:ring-0 focus:outline-hidden cursor-pointer"
+                            title="Escolha o tempo do intervalo para rastrear novos leads automaticamente de minuto em minuto"
+                          >
+                            <option value={1} className="dark:bg-neutral-900">A cada 1 min</option>
+                            <option value={2} className="dark:bg-neutral-900">A cada 2 min</option>
+                            <option value={5} className="dark:bg-neutral-900">A cada 5 min</option>
+                            <option value={10} className="dark:bg-neutral-900">A cada 10 min</option>
+                            <option value={15} className="dark:bg-neutral-900">A cada 15 min</option>
+                            <option value={30} className="dark:bg-neutral-900">A cada 30 min</option>
+                            <option value={60} className="dark:bg-neutral-900">A cada 1 hora</option>
+                          </select>
+                        </div>
+                      </div>
 
                       <button
                         onClick={startCreatingLead}
-                        className="flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-widest bg-[#FAF9F6] text-[#1A1A1A] border border-[#1A1A1A]/20 hover:border-[#1A1A1A] transition-all"
+                        className="flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-widest bg-[#FAF9F6] text-[#1A1A1A] border border-[#1A1A1A]/20 hover:border-[#1A1A1A] transition-all cursor-pointer"
                       >
                         <Plus className="h-4 w-4 text-[#1A1A1A]" />
                         <span>Cadastrar Manualmente</span>
@@ -3608,8 +4176,7 @@ export default function App() {
                         <Search className="h-5 w-5" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm uppercase text-[#1A1A1A]">Nenhum lead capturado ainda.</h4>
-                        <p className="text-xs text-[#1A1A1A]/70 mt-1 font-semibold">Clique em Buscar Novos Leads</p>
+                        <h4 className="font-bold text-sm uppercase text-[#1A1A1A]">Nenhum lead capturado ainda. Clique em Buscar Novos Leads</h4>
                       </div>
                     </div>
                   ) : consolidatedBuyerLeads.length === 0 ? (
@@ -3636,16 +4203,58 @@ export default function App() {
                         
                         const waLink = `https://api.whatsapp.com/send?phone=${lead.whatsapp}&text=${encodeURIComponent(customizedMsg)}`;
 
+                        // Encontrar imóveis compatíveis no site Grupo Leandro Rodrigues para este lead Comprador
+                        const matchedGLRProperties = !isOwner ? GRUPO_LEANDRO_RODRIGUES_PROPERTIES.filter(prop => {
+                          const cityMatch = prop.cidade === lead.cidade;
+                          if (!cityMatch) return false;
+                          const typeMatch = prop.tipoImovel === lead.tipoImovel;
+                          if (!typeMatch) return false;
+                          const budgetMatch = prop.valor <= lead.valorMaximo * 1.15;
+                          if (!budgetMatch) return false;
+                          const roomsMatch = prop.quartos >= lead.quartos;
+                          return roomsMatch;
+                        }) : [];
+
+                        // Para leads Proprietários, encontrar compradores compatíveis na nossa base
+                        const matchedBuyers = isOwner ? buyerLeads.filter(buyer => {
+                          const isBuyerLead = (buyer.tipoLead || "Comprador") === "Comprador";
+                          if (!isBuyerLead) return false;
+                          const cityMatch = buyer.cidade === lead.cidade;
+                          const typeMatch = buyer.tipoImovel === lead.tipoImovel;
+                          const budgetMatch = buyer.valorMaximo >= lead.valorMaximo * 0.85;
+                          const roomsMatch = lead.quartos >= buyer.quartos;
+                          return cityMatch && typeMatch && budgetMatch && roomsMatch;
+                        }) : [];
+
                         // Diferenciação Visual Comprador vs Proprietário
                         const cardBorderClass = isOwner 
                           ? "border-l-4 border-l-amber-500 border-amber-500/25 hover:border-amber-500/50 hover:shadow-amber-500/5"
                           : "border-l-4 border-l-emerald-500 border-emerald-500/25 hover:border-emerald-500/50 hover:shadow-emerald-500/5";
 
-                        const typeBadgeClass = isOwner
-                          ? "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-                          : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20";
+                        // Classificação de Lead para o Badge do Topo
+                        const leadClassificationText = (() => {
+                          if (lead.perfilAnunciante === "Corretor/Imobiliária") {
+                            return "imobiliaria / corretor";
+                          }
+                          if (lead.tipoLead === "Comprador") {
+                            return "cliente em busca de imovel";
+                          }
+                          return "proprietário";
+                        })();
 
-                        const typeBadgeText = isOwner ? "🔶 PROPRIETÁRIO DIRETO (FSBO)" : "🟢 CLIENTE COMPRADOR";
+                        const classificationBadgeClass = (() => {
+                          if (leadClassificationText === "imobiliaria / corretor") {
+                            return "bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-500/20";
+                          }
+                          if (leadClassificationText === "cliente em busca de imovel") {
+                            return "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20";
+                          }
+                          return "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-500/20";
+                        })();
+
+                        const isContacted = lead.status !== "Pendente";
+                        const blinkColorClass = isContacted ? "bg-orange-500" : "bg-emerald-500";
+                        const blinkTitleText = isContacted ? "Lead já contatado" : "Lead ainda não contatado";
 
                         const avatarBgClass = isOwner 
                           ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900"
@@ -3666,15 +4275,23 @@ export default function App() {
                         return (
                           <div
                             key={lead.id}
-                            className={`bg-[#FAF9F6] border border-[#1A1A1A]/10 p-5 space-y-4 group hover:border-[#1A1A1A]/30 transition-all shadow-md hover:shadow-lg flex flex-col justify-between ${cardBorderClass}`}
+                            className={`relative bg-[#FAF9F6] border border-[#1A1A1A]/10 p-5 space-y-4 group hover:border-[#1A1A1A]/30 transition-all shadow-md hover:shadow-lg flex flex-col justify-between ${cardBorderClass}`}
                           >
+                            {/* Bolinha piscando no canto superior direito do card */}
+                            <div className="absolute top-4 right-4 flex items-center gap-1.5" title={blinkTitleText}>
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${blinkColorClass}`}></span>
+                                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${blinkColorClass}`}></span>
+                              </span>
+                            </div>
+
                             <div className="space-y-4">
                               {/* Topo do Lead: Identificação, Badge de Categoria e Status */}
                               <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center justify-between flex-wrap gap-2 pr-6">
                                   {/* Tipo de Lead Badge */}
-                                  <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-sm font-mono ${typeBadgeClass}`}>
-                                    {typeBadgeText}
+                                  <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-sm font-mono ${classificationBadgeClass}`}>
+                                    {leadClassificationText}
                                   </span>
 
                                   {/* Status Selector */}
@@ -3691,18 +4308,110 @@ export default function App() {
                                   </select>
                                 </div>
 
-                                <div className="flex items-start gap-3 mt-1">
-                                  <div className={`h-11 w-11 rounded-full border flex items-center justify-center font-extrabold font-mono text-sm shrink-0 mt-0.5 shadow-sm ${avatarBgClass}`}>
-                                    {initials}
+                                <div className="flex items-start gap-4 mt-2">
+                                  {/* Par de fotos: Foto do Perfil + Foto de Origem do Canal */}
+                                  <div className="flex items-center gap-1 shrink-0 bg-neutral-100 dark:bg-white/5 p-1 rounded-full border theme-border">
+                                    {/* Foto da Pessoa */}
+                                    <div className="relative group/avatar" title={lead.fotoPerfil ? "Foto Real Sincronizada" : "Desenho Ilustrativo (Nenhuma foto real encontrada)"}>
+                                      <img 
+                                        src={getRealProfilePic(lead.nome, lead.fotoPerfil)} 
+                                        alt={lead.nome} 
+                                        referrerPolicy="no-referrer"
+                                        className={`h-11 w-11 rounded-full border bg-white object-cover shadow-xs ${
+                                          lead.fotoPerfil 
+                                            ? 'border-emerald-500 ring-2 ring-emerald-500/20' 
+                                            : 'border-slate-300 border-dashed'
+                                        }`} 
+                                      />
+                                      {/* Mini badge indicador de autenticidade no avatar */}
+                                      <span className={`absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold text-white border border-white ${
+                                        lead.fotoPerfil ? "bg-emerald-500" : "bg-neutral-400"
+                                      }`}>
+                                        {lead.fotoPerfil ? "✓" : "?"}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Indicador de link de sincronização */}
+                                    <span className="text-[10px] font-bold text-slate-400 font-mono px-0.5">➔</span>
+                                    
+                                    {/* Foto extraída da plataforma de origem */}
+                                    {(() => {
+                                      const orig = (lead.origem || "").toLowerCase();
+                                      let name = "Portal Web";
+                                      let color = "bg-slate-600";
+                                      let Icon = Globe;
+
+                                      if (orig.includes("whatsapp")) {
+                                        name = "WhatsApp";
+                                        color = "bg-emerald-500";
+                                        Icon = MessageCircle;
+                                      } else if (orig.includes("facebook") || orig.includes("marketplace") || orig.includes("grupo")) {
+                                        name = "Facebook";
+                                        color = "bg-[#1877F2]";
+                                        Icon = Facebook;
+                                      } else if (orig.includes("instagram")) {
+                                        name = "Instagram";
+                                        color = "bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]";
+                                        Icon = Instagram;
+                                      } else if (orig.includes("google") || orig.includes("busca")) {
+                                        name = "Google";
+                                        color = "bg-[#EA4335]";
+                                        Icon = Search;
+                                      } else if (orig.includes("olx")) {
+                                        name = "OLX";
+                                        color = "bg-[#F37021]";
+                                        Icon = ExternalLink;
+                                      }
+
+                                      return (
+                                        <div 
+                                          className={`h-9 w-9 rounded-full flex items-center justify-center text-white shadow-xs shrink-0 ${color}`}
+                                          title={`Foto sincronizada via: ${name}`}
+                                        >
+                                          <Icon className="h-4 w-4" />
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
-                                  <div className="min-w-0">
-                                    <h3 className="text-base font-extrabold uppercase tracking-tight theme-text-primary truncate">
-                                      {lead.nome}
-                                    </h3>
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="text-base font-extrabold uppercase tracking-tight theme-text-primary truncate">
+                                        {lead.nome}
+                                      </h3>
+                                      {lead.fotoPerfil ? (
+                                        <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-sm">
+                                          <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                                          Foto Real
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-sm">
+                                          Desenho
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="text-[10px] theme-text-muted font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
                                       <span>Registrado: {lead.dataCaptura.split("-").reverse().join("/")}</span>
                                       <span>•</span>
                                       <span>Canal: <strong className="text-slate-700 dark:text-slate-300">{lead.origem}</strong></span>
+                                    </div>
+                                    <div className="mt-1">
+                                      {(() => {
+                                        const orig = (lead.origem || "").toLowerCase();
+                                        let name = "Portal Web";
+                                        if (orig.includes("whatsapp")) name = "WhatsApp";
+                                        else if (orig.includes("facebook") || orig.includes("marketplace") || orig.includes("grupo")) name = "Facebook";
+                                        else if (orig.includes("instagram")) name = "Instagram";
+                                        else if (orig.includes("google") || orig.includes("busca")) name = "Google";
+                                        else if (orig.includes("olx")) name = "OLX";
+
+                                        return (
+                                          <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider text-slate-500 bg-slate-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded-xs">
+                                            <span>Foto extraída de:</span>
+                                            <strong className="text-[#1A1A1A] dark:text-white">{name}</strong>
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
@@ -3761,39 +4470,267 @@ export default function App() {
                                 </div>
 
                                 {lead.detalhes && (
-                                  <div className="border-t border-[#1A1A1A]/5 pt-2 mt-2 text-[10px] theme-text-muted font-serif italic">
-                                    "{lead.detalhes}"
+                                  <div className="border-t border-[#1A1A1A]/10 pt-3 mt-2 space-y-3">
+                                    <div className="text-[13px] text-slate-800 dark:text-slate-200 font-verdana italic leading-relaxed bg-white/40 dark:bg-black/15 p-2 rounded border border-dashed border-[#1A1A1A]/5">
+                                      "{lead.detalhes}"
+                                    </div>
+                                    
+                                    {/* Exibição da Foto Real do Anúncio ou Comentário */}
+                                    <div className="overflow-hidden border border-[#1A1A1A]/10 rounded-sm bg-white dark:bg-[#151515] shadow-xs">
+                                      <div className="bg-slate-50 dark:bg-neutral-800/80 px-2.5 py-1 text-[9px] font-bold text-slate-500 dark:text-neutral-400 flex items-center justify-between font-mono border-b border-[#1A1A1A]/5">
+                                        <span className="flex items-center gap-1">
+                                          <Camera className="h-3 w-3 text-slate-400" />
+                                          MÍDIA EXTRAÍDA DO ANÚNCIO / COMENTÁRIO
+                                        </span>
+                                        <span className={`text-[8px] px-1.5 py-0.5 rounded-xs font-mono font-bold ${
+                                          lead.fotoAnuncio && lead.fotoAnuncio.trim().startsWith("http")
+                                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-300/30"
+                                            : "bg-slate-200 text-slate-700 dark:bg-neutral-700 dark:text-neutral-300"
+                                        }`}>
+                                          {lead.fotoAnuncio && lead.fotoAnuncio.trim().startsWith("http") ? "FOTO REAL" : "DESENHO ILUSTRATIVO"}
+                                        </span>
+                                      </div>
+                                      
+                                      {lead.fotoAnuncio && lead.fotoAnuncio.trim().startsWith("http") ? (
+                                        <div className="relative aspect-video max-h-44 overflow-hidden bg-neutral-900 flex items-center justify-center">
+                                          <img 
+                                            src={lead.fotoAnuncio} 
+                                            alt="Mídia real capturada do anúncio ou comentário" 
+                                            referrerPolicy="no-referrer"
+                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                          />
+                                          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-xs flex items-center gap-1 shadow-xs">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                                            FOTO REAL DO IMÓVEL
+                                          </div>
+                                          <div className="absolute bottom-2 left-2 bg-black/75 text-white text-[9px] font-mono font-bold px-2 py-0.5 rounded-xs flex items-center gap-1 backdrop-blur-xs">
+                                            <Home className="h-2.5 w-2.5 text-amber-300" />
+                                            <span>{lead.tipoImovel} em {lead.bairroInteresse}</span>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="relative aspect-video max-h-44 overflow-hidden bg-neutral-100 dark:bg-neutral-800/80 flex flex-col items-center justify-center p-4 border border-dashed border-[#1A1A1A]/10 text-center">
+                                          {/* Desenho ilustrativo de uma casinha/apartamento como blueprint (desenho técnico) */}
+                                          <div className="text-neutral-400 dark:text-neutral-500 mb-2 flex flex-col items-center">
+                                            <svg className="w-10 h-10 stroke-current fill-none stroke-[1.5]" viewBox="0 0 24 24">
+                                              {/* Desenho de uma casa estilo sketch */}
+                                              <path d="M3 10l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                              <path d="M9 21V9h6v12" />
+                                              {/* Linhas de desenho técnico */}
+                                              <path d="M1 21h22" strokeDasharray="2 2" />
+                                              <path d="M12 2v20" strokeDasharray="1 3" />
+                                              <circle cx="12" cy="12" r="3" strokeDasharray="2 2" />
+                                            </svg>
+                                          </div>
+                                          <span className="text-[10px] font-bold font-mono text-neutral-500 uppercase tracking-wider">
+                                            Sem Imagem Real do Anúncio
+                                          </span>
+                                          <p className="text-[9px] text-neutral-400 dark:text-neutral-500 max-w-xs mt-1 font-serif italic">
+                                            Nenhuma foto real capturada (Google Busca ou postagem de texto apenas). Desenho ilustrativo exibido.
+                                          </p>
+                                          <div className="absolute bottom-2 left-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-xs">
+                                            {lead.tipoImovel} em {lead.bairroInteresse}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
 
+                              {/* SEÇÃO ESPECIAL DE COMPATIBILIDADE - GRUPO LEANDRO RODRIGUES */}
+                              {!isOwner && matchedGLRProperties.length > 0 && (
+                                <div className="border border-emerald-600/30 bg-emerald-50/50 p-3.5 space-y-3 rounded-xs">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 text-emerald-800">
+                                      <Sparkles className="h-4 w-4 text-emerald-600 animate-pulse" />
+                                      <span className="text-xs font-extrabold uppercase tracking-wider font-mono">
+                                        Compatibilidade no Seu Site
+                                      </span>
+                                    </div>
+                                    <span className="text-[9px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 border border-emerald-200">
+                                      www.grupoleandrorodrigues.com.br
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-2.5">
+                                    <span className="text-[10px] text-neutral-600 dark:text-neutral-400 block font-sans">
+                                      Identificamos {matchedGLRProperties.length} {matchedGLRProperties.length === 1 ? 'imóvel' : 'imóveis'} compatíveis no catálogo do seu site que podem atender {lead.nome}:
+                                    </span>
+
+                                    {matchedGLRProperties.slice(0, 2).map((prop) => {
+                                      const propertyUrl = `https://www.grupoleandrorodrigues.com.br/imovel/${prop.slug}`;
+                                      
+                                      // WhatsApp message for sending property to buyer
+                                      const sendPropMsg = `Olá ${lead.nome}, tudo bem? Identifiquei um imóvel espetacular em nosso portal Grupo Leandro Rodrigues que atende perfeitamente ao seu perfil imobiliário!\n\n🏡 *${prop.titulo}*\n📍 Bairro: ${prop.bairro} (${prop.cidade})\n🛏️ ${prop.quartos} quarto(s)\n💰 Valor: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(prop.valor)}\n\nConfira todas as fotos e detalhes no link abaixo:\n🔗 ${propertyUrl}\n\nGostaria de agendar uma visita?`;
+                                      
+                                      const propWaLink = `https://api.whatsapp.com/send?phone=${lead.whatsapp}&text=${encodeURIComponent(sendPropMsg)}`;
+
+                                      const isBairroMatch = prop.bairro.toLowerCase() === lead.bairroInteresse.toLowerCase();
+
+                                      return (
+                                        <div key={prop.id} className="bg-white dark:bg-[#1E1E1E] border border-[#1A1A1A]/10 p-2.5 flex gap-3 hover:border-emerald-500/40 transition-all">
+                                          <img 
+                                            src={prop.imagemUrl} 
+                                            alt={prop.titulo}
+                                            referrerPolicy="no-referrer"
+                                            className="w-16 h-16 object-cover rounded-xs border border-neutral-200 dark:border-neutral-800 shrink-0"
+                                          />
+                                          <div className="min-w-0 flex-1 flex flex-col justify-between">
+                                            <div>
+                                              <div className="flex items-center justify-between gap-1 flex-wrap">
+                                                <h4 className="text-[11px] font-bold text-slate-900 dark:text-white truncate uppercase" title={prop.titulo}>
+                                                  {prop.titulo}
+                                                </h4>
+                                                {isBairroMatch && (
+                                                  <span className="text-[8px] font-mono font-bold uppercase bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded-xs">
+                                                    Bairro Perfeito
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="text-[9px] font-mono text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                                {prop.bairro} • {prop.quartos} quarto(s)
+                                              </div>
+                                              <div className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">
+                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(prop.valor)}
+                                              </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between gap-2 mt-2 border-t border-neutral-100 dark:border-neutral-800 pt-1.5">
+                                              <a 
+                                                href={propertyUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-[9px] font-bold text-[#00AFCB] hover:underline flex items-center gap-1"
+                                              >
+                                                <ExternalLink className="h-2.5 w-2.5" />
+                                                Ver no Site
+                                              </a>
+                                              
+                                              <div className="flex items-center gap-1.5">
+                                                <button
+                                                  onClick={() => {
+                                                    navigator.clipboard.writeText(sendPropMsg);
+                                                    setCopySuccessId(`${lead.id}-${prop.id}`);
+                                                    setTimeout(() => setCopySuccessId(null), 1500);
+                                                  }}
+                                                  className="p-1 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-slate-600 dark:text-slate-400 rounded-sm transition-colors text-[9px] font-bold flex items-center gap-1 cursor-pointer"
+                                                  title="Copiar texto da abordagem com imóvel"
+                                                >
+                                                  {copySuccessId === `${lead.id}-${prop.id}` ? (
+                                                    <Check className="h-2.5 w-2.5 text-emerald-600 animate-bounce" />
+                                                  ) : (
+                                                    <Copy className="h-2.5 w-2.5" />
+                                                  )}
+                                                  <span>Copiar</span>
+                                                </button>
+
+                                                <a
+                                                  href={propWaLink}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  onClick={() => {
+                                                    if (lead.status === "Pendente") {
+                                                      handleUpdateLeadStatus(lead.id, "Contatado");
+                                                    }
+                                                  }}
+                                                  className="p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm transition-colors text-[9px] font-bold flex items-center gap-1"
+                                                  title="Enviar proposta de imóvel por WhatsApp"
+                                                >
+                                                  <MessageCircle className="h-2.5 w-2.5" />
+                                                  <span>WhatsApp</span>
+                                                </a>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* CAPTAÇÃO DE PROPRIETÁRIO - COMPATIBILIDADE COM CLIENTES COMPRADORES */}
+                              {isOwner && (
+                                <div className="border border-amber-600/30 bg-amber-50/50 p-3.5 space-y-3 rounded-xs">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 text-amber-800">
+                                      <Award className="h-4 w-4 text-amber-600" />
+                                      <span className="text-xs font-extrabold uppercase tracking-wider font-mono">
+                                        Oportunidade de Captação
+                                      </span>
+                                    </div>
+                                    <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-800 px-2 py-0.5 border border-amber-200 font-mono">
+                                      www.grupoleandrorodrigues.com.br
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-1.5 text-xs text-amber-900 leading-relaxed">
+                                    <p>
+                                      Este imóvel no bairro <strong>{lead.bairroInteresse}</strong> de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(lead.valorMaximo)} pode ser anunciado imediatamente em seu site oficial.
+                                    </p>
+                                    
+                                    {matchedBuyers.length > 0 ? (
+                                      <div className="bg-white dark:bg-[#1E1E1E] border border-amber-200 dark:border-amber-900 p-2 text-[10px] text-amber-950 dark:text-amber-200 mt-1 space-y-1">
+                                        <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold">
+                                          <CheckCircle className="h-3 w-3" />
+                                          <span>{matchedBuyers.length} {matchedBuyers.length === 1 ? 'comprador compatível' : 'compradores compatíveis'} na base!</span>
+                                        </div>
+                                        <p className="text-neutral-600 dark:text-neutral-400">
+                                          Nossa inteligência identificou compradores ativamente buscando por este perfil de imóvel em {lead.cidade}.
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
+                                        Publique para atrair compradores qualificados nos portais integrados ao Grupo Leandro Rodrigues.
+                                      </p>
+                                    )}
+
+                                    <div className="pt-1 flex justify-end">
+                                      {publishedLeadIds.includes(lead.id) ? (
+                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1.5 rounded-sm flex items-center gap-1 font-mono">
+                                          <Check className="h-3 w-3" />
+                                          Enviado para Publicação!
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={() => {
+                                            setPublishedLeadIds(prev => [...prev, lead.id]);
+                                          }}
+                                          className="text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-sm transition-colors flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Upload className="h-3 w-3" />
+                                          <span>Publicar no Grupo Leandro Rodrigues</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Perfil do Anunciante Classificado Cognitivamente por IA */}
                               {lead.perfilAnunciante && (
-                                <div className="p-3 rounded-sm border bg-[#FAF9F6] border-[#1A1A1A]/10 space-y-1.5 shadow-xs">
+                                <div className="p-3 rounded-sm border border-transparent accent-bg text-white space-y-1.5 shadow-md font-verdana">
                                   <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                    <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-[#1A1A1A]/50">Perfil do Anunciante:</span>
-                                    <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-sm font-mono ${
-                                      lead.perfilAnunciante === "Pessoa Física" 
-                                        ? "bg-amber-100 text-amber-800 border border-amber-200" 
-                                        : "bg-blue-100 text-blue-800 border border-blue-200"
-                                    }`}>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/80 font-verdana">Perfil do Anunciante:</span>
+                                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-sm bg-white/20 text-white border border-white/30 font-verdana">
                                       {lead.perfilAnunciante}
                                     </span>
                                   </div>
                                   {lead.analisePerfilJustificativa && (
-                                    <p className="text-[10px] text-slate-600 dark:text-slate-400 font-serif italic leading-relaxed">
+                                    <p className="text-xs text-white/90 italic leading-relaxed font-verdana">
                                       "{lead.analisePerfilJustificativa}"
                                     </p>
                                   )}
                                   {lead.linkOrigem && (
-                                    <div className="pt-1.5 border-t border-[#1A1A1A]/5 flex justify-end">
+                                    <div className="pt-1.5 border-t border-white/15 flex justify-end">
                                       <a 
                                         href={lead.linkOrigem} 
                                         target="_blank" 
                                         rel="noopener noreferrer" 
-                                        className="text-[9px] font-mono text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 font-bold"
+                                        className="text-[10px] font-bold text-white hover:text-white/80 transition-colors flex items-center gap-1 font-verdana"
                                       >
-                                        <Link2 className="h-2.5 w-2.5" />
+                                        <Link2 className="h-3 w-3 text-white" />
                                         Ver anúncio original
                                       </a>
                                     </div>
@@ -3801,13 +4738,7 @@ export default function App() {
                                 </div>
                               )}
 
-                              {/* Trecho / Quote de Origem (Contexto do Scraper) */}
-                              {lead.textExcerpt && (
-                                <div className="bg-[#FAF9F6] border border-[#1A1A1A]/5 p-2.5 rounded-sm text-[10px] theme-text-muted italic relative group/excerpt font-serif">
-                                  <span className="absolute right-2 top-1.5 text-[8px] uppercase tracking-wider font-mono font-bold text-slate-400">Contexto de Captação</span>
-                                  "{lead.textExcerpt}"
-                                </div>
-                              )}
+
 
                               {/* Lista de Canais Verificados (Fontes de Cruzamento) */}
                               {lead.sourcesChecked && lead.sourcesChecked.length > 0 && (
@@ -6904,6 +7835,48 @@ export default function App() {
                       rows={2}
                       className="w-full text-xs p-3 bg-[#FAF9F6] border border-[#1A1A1A]/15 focus:border-[#1A1A1A] focus:outline-none transition-colors"
                     />
+                  </div>
+
+                  {/* Sincronização de Mídias Reais */}
+                  <div className="bg-[#FAF9F6] border border-[#1A1A1A]/10 p-3.5 space-y-3.5">
+                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block font-mono">
+                      Mídias Reais do Lead (WhatsApp / Facebook)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {/* Foto Real de Perfil */}
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-[#1A1A1A]/70 mb-1">
+                          Foto do Perfil (URL Real)
+                        </label>
+                        <input
+                          type="url"
+                          value={leadFormFotoPerfil}
+                          onChange={(e) => setLeadFormFotoPerfil(e.target.value)}
+                          placeholder="Link da foto real (ex: WhatsApp)"
+                          className="w-full text-xs p-2 bg-white border border-[#1A1A1A]/15 focus:border-[#1A1A1A] focus:outline-none transition-colors"
+                        />
+                        <p className="text-[8px] text-[#1A1A1A]/50 mt-1">
+                          Deixe em branco para usar o <strong>desenho ilustrativo</strong>. Se preenchido, valida a identificação real.
+                        </p>
+                      </div>
+
+                      {/* Foto Real do Anúncio */}
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-[#1A1A1A]/70 mb-1">
+                          Foto do Imóvel/Anúncio (URL Real)
+                        </label>
+                        <input
+                          type="url"
+                          value={leadFormFotoAnuncio}
+                          onChange={(e) => setLeadFormFotoAnuncio(e.target.value)}
+                          placeholder="Link do anúncio ou postagem"
+                          className="w-full text-xs p-2 bg-white border border-[#1A1A1A]/15 focus:border-[#1A1A1A] focus:outline-none transition-colors"
+                        />
+                        <p className="text-[8px] text-[#1A1A1A]/50 mt-1">
+                          Mostra o imóvel comentado ou publicado para identificação rápida de duplicidade.
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Botões do Formulário */}

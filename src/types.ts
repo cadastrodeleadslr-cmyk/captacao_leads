@@ -68,6 +68,8 @@ export interface BuyerLead {
   whatsappLink?: string;
   facebookLink?: string;
   instagramLink?: string;
+  fotoPerfil?: string;
+  fotoAnuncio?: string;
 }
 
 export interface IntegrationInfo {
